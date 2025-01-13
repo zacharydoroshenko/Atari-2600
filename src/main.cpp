@@ -38,8 +38,10 @@ int main(){
     int i = 0;
     while(i < 1){
         
-        InstMatrix[0][1];
+        InstMatrix[0][1](state);
         printf("%d\n", state->cycleDif);
+
+        
         i++;
     }
 

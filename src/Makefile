@@ -1,27 +1,30 @@
 # Compiler and flags
-CXX = gcc
-CXXFLAGS = -Wall -Wextra -02 -std=c++17
+CXX = g++
+CXXFLAGS = -Wall -Wextra -std=c++17
 
-#Files and dependencies
-TARGET = main
-OBJS = main.o cpu.o
+# Source files
+SRCS = main.cpp cpu.cpp
 
-#Default target
+# Object files
+OBJS = $(SRCS:.cpp=.o)
+
+# Output executable
+TARGET = Atari2600
+
+# Default target
 all: $(TARGET)
 
-#Rule to build the target executable
+# Rule to build the target executable
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
-#Rule to compile main.cpp
-main.o: main.cpp cpu.h
-	$(CXX) $(CXXFLAGS) -c main.cpp
+# Rule to build object files
+%.o: %.cpp %.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-#Rule to compile cpu.cpp
-cpu.o: cpu.cpp cpu.h
-	$(CXX) $(CXXFLAGS) -c cpu.cpp
-
-#Clean up generated files
+# Cleanup
 clean:
 	rm -f $(OBJS) $(TARGET)
 
+# Phony targets
+.PHONY: all clean
