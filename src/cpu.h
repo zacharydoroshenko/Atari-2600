@@ -13,6 +13,7 @@
 #include <cstdint>
 
 using namespace std;
+typedef void (*FunctionPtr)(CPUState* S);
 
 typedef struct {
     //registers
@@ -28,15 +29,20 @@ typedef struct {
     bool V;
     bool N;
 
+    FunctionPtr M[16][16];
 
     bool halt;
     int cycleDif;
     uint8_t memory[65536];
 
-    uint8_t oppcode;
 
 } CPUState;
 
+//initializes cpustate variables to starting values
+void initialize(CPUState* S);
+
+//To run an instruction based on its oppcode
+void Run(CPUState* S);
 
 //Add Memory to Accumulator with Carry
 void ADC(CPUState* S);
