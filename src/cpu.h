@@ -2,6 +2,13 @@
 //forums.atariage.com/topic/27190-session-5-memory-architecture/
 //nesdev.org/obelisk-6502-guide/reference.html
 
+//Assumptions made:
+//decrement is done by I--
+//increment is done by I++
+//to push to stack you do S->SP++; S->memory[S->SP] = S->A;
+//to pull from stack you do S->A = S->memory[S->SP]; S->SP--;
+//offset can be calculated with S->PC += offset;
+
 #include <iostream>
 #include <cstdint>
 
@@ -9,8 +16,17 @@ using namespace std;
 
 typedef struct {
     //registers
-    uint8_t A, X, Y, SP, P;
+    uint8_t A, X, Y, SP;
     uint16_t PC;
+
+    //processor status
+    bool C;
+    bool Z;
+    bool I;
+    bool D;
+    bool B;
+    bool V;
+    bool N;
 
 
     bool halt;

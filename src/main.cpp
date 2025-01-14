@@ -11,7 +11,6 @@ int main(){
 
     //initialize CPUState
     CPUState* state = (CPUState*) calloc(sizeof(CPUState), 1);
-    state->P = 0b00100000;
     state->PC = 0x1000;
 
     //Open ROM and put into memory

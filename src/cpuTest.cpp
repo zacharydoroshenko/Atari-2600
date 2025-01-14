@@ -4,7 +4,7 @@ typedef void (*FunctionPtr)(CPUState* S);
 
 int main(){
     //initialize instruction matrix
-    FunctionPtr InstMatrix[16][16] = {
+    FunctionPtr M[16][16] = {
         {BRK, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr, PHP, ORA, ASL, nullptr, nullptr, ORA, ASL, nullptr},
         {BPL, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr, CLC, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr},
         {JSR, AND, nullptr, nullptr, BIT, AND, ROL, nullptr, PLP, AND, ROL, nullptr, BIT, AND, ROL, nullptr},
@@ -24,6 +24,32 @@ int main(){
 
     };
 
-    
+
+    //initialize CPUState
+    CPUState* s = (CPUState*) calloc(sizeof(CPUState), 1);
+    s->PC = 0x1000;
+
+    //Test ADC Immediate
+    s->oppcode = 0x69;
+    s->memory[0x1000] = 0x69;
+    s->memory[0x1001] = 0x01;
+    M[6][9](s);
+
+
+    //Test ADC Zero Page
+
+
+    //Test ADC Zero Page, X
+
+
+    //Test ADC Absolute
+
+
+    //Test ADC Absolute, X
+
+
+    //Test ADC Absolute Indirect X
+
+    //Test ADC Indirect Y
 }
 
