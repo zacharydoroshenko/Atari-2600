@@ -19,7 +19,6 @@ void initialize(CPUState* S){
         {BNE, CMP, nullptr, nullptr, nullptr, CMP, DEC, nullptr, CLD, CMP, nullptr, nullptr, nullptr, CMP, DEC, nullptr},
         {CPX, SBC, nullptr, nullptr, CPX, SBC, INC, nullptr, INX, SBC, NOP, nullptr, CPX, SBC, INC, nullptr},
         {BEQ, SBC, nullptr, nullptr, nullptr, SBC, INC, nullptr, SED, SBC, nullptr, nullptr, nullptr, SBC, INC, nullptr}
-
     };
 
     //Copy M into S->M
@@ -31,7 +30,7 @@ void initialize(CPUState* S){
 
     //initialize variables 
     S->PC = 0x1000;
-    S->SP = 0x0100;
+    S->SP = 4;
 }
 
 //To run an instruction based on its oppcode
@@ -41,17 +40,18 @@ void Run(CPUState* S){
 }
 
 //Add Memory to Accumulator with Carry
-void ADC(CPUState* S);
+void ADC(CPUState* S){}
 
 //And Memory with Accumulator
-void AND(CPUState* S);
+void AND(CPUState* S){}
 
 //Shift left one bit (memory or accumulator)
-void ASL(CPUState* S);
+void ASL(CPUState* S){}
 
 //Branch on Carry clear
 void BCC(CPUState* S){
     //extract the argument
+    uint16_t oldPC = S->PC;
     S->PC++;
     int8_t offset = S->memory[S->PC];
     S->PC++;
@@ -111,7 +111,7 @@ void BEQ(CPUState* S){
 }
 
 //Test Bits in memory with accumulator
-void BIT(CPUState* S);
+void BIT(CPUState* S){}
 
 //Branch on result minus
 void BMI(CPUState* S){
@@ -276,16 +276,16 @@ void CLV(CPUState* S){
 }
 
 //Compare Memory and Accumulator
-void CMP(CPUState* S);
+void CMP(CPUState* S){}
 
 //Compare Memory and Index X
-void CPX(CPUState* S);
+void CPX(CPUState* S){}
 
 //Compare Memory and Index Y
-void CPY(CPUState* S);
+void CPY(CPUState* S){}
 
 //Decrement Memory by One
-void DEC(CPUState* S);
+void DEC(CPUState* S){}
 
 //Decrement Index X by One
 void DEX(CPUState* S){
@@ -314,10 +314,10 @@ void DEY(CPUState* S){
 }
 
 //"Exclusive-or" Memory with Accumulator
-void EOR(CPUState* S);
+void EOR(CPUState* S){}
 
 //Increment Memory by One
-void INC(CPUState* S);
+void INC(CPUState* S){}
 
 //Increment Index X by One
 void INX(CPUState* S){
@@ -346,22 +346,22 @@ void INY(CPUState* S){
 }
 
 //Jump to New Location
-void JMP(CPUState* S);
+void JMP(CPUState* S){}
 
 //Jump to new Location Saving Return Address
-void JSR(CPUState* S);
+void JSR(CPUState* S){}
 
 //Load Accumulator with Memory
-void LDA(CPUState* S);
+void LDA(CPUState* S){}
 
 //Load Index x with Memory
-void LDX(CPUState* S);
+void LDX(CPUState* S){}
 
 //Load Index Y with Memory
-void LDY(CPUState* S);
+void LDY(CPUState* S){}
 
 //Shift One Bit Right (Memory or Accumulator)
-void LSR(CPUState* S);
+void LSR(CPUState* S){}
 
 //No Operation
 void NOP(CPUState* S){
@@ -370,7 +370,7 @@ void NOP(CPUState* S){
 }
 
 //"OR" Memory with Accumulator
-void ORA(CPUState* S);
+void ORA(CPUState* S){}
 
 //Push Accumulator on Stack
 void PHA(CPUState* S){
@@ -429,10 +429,10 @@ void PLP(CPUState* S){
 }
 
 //Rotate One Bit Left (Memory or Accumulator)
-void ROL(CPUState* S);
+void ROL(CPUState* S){}
 
 //Rotate One Bit Right (Memory or Accumulator)
-void ROR(CPUState* S);
+void ROR(CPUState* S){}
 
 //Return from Interrupt
 void RTI(CPUState* S){
@@ -465,7 +465,7 @@ void RTS(CPUState* S){
 }
 
 //Subtract Memory from Accumulator
-void SBC(CPUState* S);
+void SBC(CPUState* S){}
 
 //Set Carry Flag
 void SEC(CPUState* S){
@@ -489,13 +489,13 @@ void SEI(CPUState* S){
 }
 
 //Store Accumulator in Memory
-void STA(CPUState* S);
+void STA(CPUState* S){}
 
 //Store Index X in Memory
-void STX(CPUState* S);
+void STX(CPUState* S){}
 
 //Store Index Y in Memory
-void STY(CPUState* S);
+void STY(CPUState* S){}
 
 //Transfer Accumulator to Index X
 void TAX(CPUState* S){

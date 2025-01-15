@@ -13,9 +13,11 @@
 #include <cstdint>
 
 using namespace std;
-typedef void (*FunctionPtr)(CPUState* S);
 
-typedef struct {
+
+typedef void (*FunctionPtr)(struct CPUState* S);
+
+typedef struct CPUState{
     //registers
     uint8_t A, X, Y, SP;
     uint16_t PC;

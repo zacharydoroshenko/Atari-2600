@@ -22,9 +22,13 @@ $(TARGET): $(OBJS)
 %.o: %.cpp %.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# Rule to build cpuTest
+cpuTest: cpuTest.cpp cpu.o
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
 # Cleanup
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(TARGET) cpuTest
 
 # Phony targets
 .PHONY: all clean
