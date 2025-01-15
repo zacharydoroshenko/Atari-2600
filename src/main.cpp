@@ -3,15 +3,9 @@
 typedef void (*FunctionPtr)(CPUState* S);
 
 int main(){
-    //initialize instruction matrix
-    FunctionPtr InstMatrix[2][2] = {
-        {nullptr, NOP},
-        {SEC, SED}
-    };
-
     //initialize CPUState
     CPUState* state = (CPUState*) calloc(sizeof(CPUState), 1);
-    state->PC = 0x1000;
+    initialize(state);
 
     //Open ROM and put into memory
     ifstream file("Combat.A26", ios::binary);
@@ -35,10 +29,11 @@ int main(){
     //TODO make while loop good
     //While loop to create frame buffer
     int i = 0;
-    while(i < 1){
+    while(i < 3){
+        printf("0x%X\n", state->memory[state->PC]);
+        Run(state);
+        // printf("%d\n", state->cycleDif);
         
-        InstMatrix[0][1](state);
-        printf("%d\n", state->cycleDif);
 
         
         i++;

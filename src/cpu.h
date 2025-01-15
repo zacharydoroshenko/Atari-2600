@@ -9,6 +9,8 @@
 //to pull from stack you do S->A = S->memory[S->SP]; S->SP--;
 //offset can be calculated with S->PC += offset;
 
+//look into interrupts
+
 #include <iostream>
 #include <cstdint>
 
