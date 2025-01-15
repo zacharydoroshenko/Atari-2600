@@ -334,16 +334,194 @@ int main(){
 
     //TAX --------------------------------------------------------------------------------------------------------------------------------------
 
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0xAA;
+    S->X = 0x34;
+    S->A = 0x00;
+    S->Z = 0;
+    S->N = 1;
+    Run(S);
+
+    assert(S->X == 0x00);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 1);
+    assert(S->N == 0);
+
+    //test negative flag
+
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0xAA;
+    S->X = 0x35;
+    S->A = 0xFE;
+    S->Z = 1;
+    S->N = 0;
+    Run(S);
+    assert(S->X == 0xFE);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 0);
+    assert(S->N == 1);
+
     //TAY --------------------------------------------------------------------------------------------------------------------------------------
+
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0xA8;
+    S->Y = 0x34;
+    S->A = 0x00;
+    S->Z = 0;
+    S->N = 1;
+    Run(S);
+
+    assert(S->Y == 0x00);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 1);
+    assert(S->N == 0);
+
+    //test negative flag
+
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0xA8;
+    S->Y = 0x35;
+    S->A = 0xFE;
+    S->Z = 1;
+    S->N = 0;
+    Run(S);
+    assert(S->Y == 0xFE);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 0);
+    assert(S->N == 1);
 
     //TSX --------------------------------------------------------------------------------------------------------------------------------------
 
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0xBA;
+    S->X = 0x34;
+    S->SP = 0x00;
+    S->Z = 0;
+    S->N = 1;
+    Run(S);
+
+    assert(S->X == 0x00);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 1);
+    assert(S->N == 0);
+
+    //test negative flag
+
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0xBA;
+    S->X = 0x35;
+    S->SP = 0xFE;
+    S->Z = 1;
+    S->N = 0;
+    Run(S);
+    assert(S->X == 0xFE);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 0);
+    assert(S->N == 1);
+
     //TXA --------------------------------------------------------------------------------------------------------------------------------------
+
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0x8A;
+    S->A = 0x34;
+    S->X = 0x00;
+    S->Z = 0;
+    S->N = 1;
+    Run(S);
+
+    assert(S->A == 0x00);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 1);
+    assert(S->N == 0);
+
+    //test negative flag
+
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0x8A;
+    S->A = 0x35;
+    S->X = 0xFE;
+    S->Z = 1;
+    S->N = 0;
+    Run(S);
+    assert(S->A == 0xFE);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 0);
+    assert(S->N == 1);
 
     //TXS --------------------------------------------------------------------------------------------------------------------------------------
 
+    //test zero flag
+
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0x9A;
+    S->SP = 0x34;
+    S->X = 0x00;
+    S->Z = 1;
+    S->N = 0;
+    Run(S);
+
+    assert(S->SP == 0x00);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 1);
+    assert(S->N == 0);
+
+    //test negative flag
+
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0x9A;
+    S->SP = 0x35;
+    S->X = 0xFE;
+    S->Z = 0;
+    S->N = 1;
+    Run(S);
+    assert(S->SP == 0xFE);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 0);
+    assert(S->N == 1);
+
     //TYA --------------------------------------------------------------------------------------------------------------------------------------
     
+    //test zero flag
+
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0x98;
+    S->A = 0x34;
+    S->Y = 0x00;
+    S->Z = 0;
+    S->N = 1;
+    Run(S);
+
+    assert(S->A == 0x00);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 1);
+    assert(S->N == 0);
+
+    //test negative flag
+
+    S->PC = 0x1000;
+    S->memory[S->PC] = 0x98;
+    S->A = 0x35;
+    S->Y = 0xFE;
+    S->Z = 1;
+    S->N = 0;
+    Run(S);
+    assert(S->A == 0xFE);
+    assert(S->cycleDif == 2);
+    assert(S->PC == 0x1001);
+    assert(S->Z == 0);
+    assert(S->N == 1);
+
     printf("Everything works! :)\n");
 }
 

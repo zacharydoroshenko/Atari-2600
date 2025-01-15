@@ -1,4 +1,8 @@
 #include "cpu.h"
+//do store functions for X, Y, A next
+//do jump next
+//do compare next
+
 
 //initializes cpustate variables to starting values
 void initialize(CPUState* S){
@@ -61,7 +65,6 @@ void BCC(CPUState* S){
         S->cycleDif = 2;
     } else {
         //branch taken
-        uint16_t oldPC = S->PC;
         S->PC += offset;
 
         //put correct cycleDif based on if it crossed a page
@@ -291,10 +294,10 @@ void DEC(CPUState* S){}
 void DEX(CPUState* S){
     S->X--;
     
-    if(S->X == 0) S->Z = 1;
+    S->Z = (S->X == 0) ? 1 : 0;
 
     //extracted bit
-    if(((S->X >> 7) & 1) == 1) S->N = 1;
+    S->N = ((S->X >> 7) & 1) ? 1 : 0;
 
     S->PC++;
     S->cycleDif = 2;
@@ -304,10 +307,10 @@ void DEX(CPUState* S){
 void DEY(CPUState* S){
     S->Y--;
     
-    if(S->Y == 0) S->Z = 1;
+    S->Z = (S->Y == 0) ? 1 : 0;
 
     //extracted bit
-    if(((S->Y >> 7) & 1) == 1) S->N = 1;
+    S->N = ((S->Y >> 7) & 1) ? 1 : 0;
 
     S->PC++;
     S->cycleDif = 2;
@@ -323,10 +326,10 @@ void INC(CPUState* S){}
 void INX(CPUState* S){
     S->X++;
     
-    if(S->X == 0) S->Z = 1;
+    S->Z = (S->X == 0) ? 1 : 0;
 
     //extracted bit
-    if(((S->X >> 7) & 1) == 1) S->N = 1;
+    S->N = ((S->X >> 7) & 1) ? 1 : 0;
 
     S->PC++;
     S->cycleDif = 2;
@@ -336,10 +339,10 @@ void INX(CPUState* S){
 void INY(CPUState* S){
     S->Y++;
     
-    if(S->Y == 0) S->Z = 1;
+    S->Z = (S->Y == 0) ? 1 : 0;
 
     //extracted bit
-    if(((S->Y >> 7) & 1) == 1) S->N = 1;
+    S->N = ((S->Y >> 7) & 1) ? 1 : 0;
 
     S->PC++;
     S->cycleDif = 2;
@@ -403,10 +406,10 @@ void PLA(CPUState* S){
     S->A = S->memory[S->SP];
     S->SP--;
 
-    if(S->A == 0) S->Z = 1;
+    S->Z = (S->A == 0) ? 1 : 0;
 
     //extracted bit
-    if(((S->A >> 7) & 1) == 1) S->N = 1;
+    S->N = ((S->A >> 7) & 1) ? 1 : 0;
 
     S->cycleDif = 4;
     S->PC++;
@@ -501,10 +504,10 @@ void STY(CPUState* S){}
 void TAX(CPUState* S){
     S->X = S->A;
     
-    if(S->X == 0) S->Z = 1;
+    S->Z = (S->X == 0) ? 1 : 0;
 
     //extracted bit
-    if(((S->X >> 7) & 1) == 1) S->N = 1;
+    S->N = ((S->X >> 7) & 1) ? 1 : 0;
 
     S->PC++;
     S->cycleDif = 2;
@@ -514,10 +517,10 @@ void TAX(CPUState* S){
 void TAY(CPUState* S){
     S->Y = S->A;
     
-    if(S->Y == 0) S->Z = 1;
+    S->Z = (S->Y == 0) ? 1 : 0;
 
     //extracted bit
-    if(((S->Y >> 7) & 1) == 1) S->N = 1;
+    S->N = ((S->Y >> 7) & 1) ? 1 : 0;
 
     S->PC++;
     S->cycleDif = 2;
@@ -527,10 +530,10 @@ void TAY(CPUState* S){
 void TSX(CPUState* S){
     S->X = S->SP;
     
-    if(S->X == 0) S->Z = 1;
+    S->Z = (S->X == 0) ? 1 : 0;
 
     //extracted bit
-    if(((S->X >> 7) & 1) == 1) S->N = 1;
+    S->N = ((S->X >> 7) & 1) ? 1 : 0;
 
     S->PC++;
     S->cycleDif = 2;
@@ -540,10 +543,10 @@ void TSX(CPUState* S){
 void TXA(CPUState* S){
     S->A = S->X;
     
-    if(S->A == 0) S->Z = 1;
+    S->Z = (S->A == 0) ? 1 : 0;
 
     //extracted bit
-    if(((S->A >> 7) & 1) == 1) S->N = 1;
+    S->N = ((S->A >> 7) & 1) ? 1 : 0;
 
     S->PC++;
     S->cycleDif = 2;
@@ -561,10 +564,10 @@ void TXS(CPUState* S){
 void TYA(CPUState* S){
     S->A = S->Y;
     
-    if(S->A == 0) S->Z = 1;
+    S->Z = (S->A == 0) ? 1 : 0;
 
     //extracted bit
-    if(((S->A >> 7) & 1) == 1) S->N = 1;
+    S->N = ((S->A >> 7) & 1) ? 1 : 0;
 
     S->PC++;
     S->cycleDif = 2;
