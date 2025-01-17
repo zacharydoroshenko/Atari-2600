@@ -10,9 +10,29 @@
 //offset can be calculated with S->PC += offset;
 
 //look into interrupts
+//find out what to put into 0xFFFE/F when BRK is run
+//find out where stack pointer starts
+
+//Don't worry about interrupts for now ie
+//BRK RTI
 
 #include <iostream>
 #include <cstdint>
+
+#define AA 1 //always 2
+#define REL 2 //always 2 (+1 if branch succeeds +2 if to a new page)
+#define IMM 3 //always 2 
+#define IND 4 //only for JMP and always uses 5 cycles
+#define INDY 5 //always 5 (+1 if page crossed)
+#define INDX 6 //always 6
+#define ZPG 7 //usually 3 (ASL = 5)(DEC = 5)(INC = 5)(LSR = 5)(ROL = 5)(ROR = 5)
+#define ZPGX 8 //usually 4 (ASL = 6)(DEC = 6)(INC = 6)(LSR = 6)(ROL = 6)(ROR = 6)
+#define ZPGY 9 //always 4
+#define ABS 10 //usually 4 (ASL = 6)(DEC = 6)(INC = 6)(LSR = 6)(ROL = 6)(ROR = 6)     (JSR = 6)(JMP = 3)
+#define ABSX 11 //usually 4 (+1 if page crossed)     (ASL = 7)(DEC = 7)(INC = 7)(LSR = 7)(ROL = 7)(ROR = 7) (STA = 5)
+#define ABSY 12 //usually 4 (+1 if page crossed)     (STA = 5)
+#define NA 13 //usually 2 (PHA = 3)(PHP = 3)(PLA = 4)(PLP = 4)(RTI = 6)(RTS = 6)(BRK = 7)
+
 
 using namespace std;
 
@@ -33,7 +53,8 @@ typedef struct CPUState{
     bool V;
     bool N;
 
-    FunctionPtr M[16][16];
+    FunctionPtr Instr[16][16];
+    uint8_t addressingMode[16][16];
 
     bool halt;
     int cycleDif;

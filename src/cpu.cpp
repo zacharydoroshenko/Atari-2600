@@ -6,7 +6,7 @@
 
 //initializes cpustate variables to starting values
 void initialize(CPUState* S){
-    FunctionPtr M[16][16] = {
+    FunctionPtr Instr[16][16] = {
         {BRK, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr, PHP, ORA, ASL, nullptr, nullptr, ORA, ASL, nullptr},
         {BPL, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr, CLC, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr},
         {JSR, AND, nullptr, nullptr, BIT, AND, ROL, nullptr, PLP, AND, ROL, nullptr, BIT, AND, ROL, nullptr},
@@ -25,10 +25,31 @@ void initialize(CPUState* S){
         {BEQ, SBC, nullptr, nullptr, nullptr, SBC, INC, nullptr, SED, SBC, nullptr, nullptr, nullptr, SBC, INC, nullptr}
     };
 
-    //Copy M into S->M
+    uint8_t addressingMode[16][16] = {
+        {NA, INDX, 0, 0, 0, ZPG, ZPG, 0, NA, IMM, AA, 0, 0, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {ABS, INDX, 0, 0, ZPG, ZPG, ZPG, 0, NA, IMM, AA, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {NA, INDX, 0, 0, 0, ZPG, ZPG, 0, NA, IMM, AA, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {NA, INDX, 0, 0, 0, ZPG, ZPG, 0, NA, IMM, AA, 0, IND, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {0, INDX, 0, 0, ZPG, ZPG, ZPG, 0, NA, 0, NA, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, ZPGX, ZPGX, ZPGY, 0, NA, ABSY, NA, 0, 0, ABSX, 0, 0},
+        {IMM, INDX, IMM, 0, ZPG, ZPG, ZPG, 0, NA, IMM, NA, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, ZPGX, ZPGX, ZPGY, 0, NA, ABSY, NA, 0, ABSX, ABSX, ABSX, 0},
+        {IMM, INDX, 0, 0, ZPG, ZPG, ZPG, 0, NA, IMM, NA, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {IMM, INDX, 0, 0, ZPG, ZPG, ZPG, 0, NA, IMM, NA, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0}
+    };
+
+
+    //Copy Instr into S->Instr and addressingMode into S->addressingMode
     for(int i = 0; i < 16; i++){
         for(int j = 0; j < 16; j++){
-            S->M[i][j] = M[i][j];
+            S->Instr[i][j] = Instr[i][j];
+            S->addressingMode[i][j] = addressingMode[i][j];
         }
     }
 
@@ -40,11 +61,62 @@ void initialize(CPUState* S){
 //To run an instruction based on its oppcode
 void Run(CPUState* S){
     uint8_t oppcode = S->memory[S->PC]; 
-    S->M[oppcode >> 4][oppcode & 0b1111](S);
+    uint8_t aMode = S->addressingMode[oppcode >> 4][oppcode & 0b1111];
+
+    if(aMode == NA){
+
+    } else if(aMode == AA){
+
+    } else if(aMode == REL){
+        
+    }
+    //run the instruction
+    S->Instr[oppcode >> 4][oppcode & 0b1111](S);
 }
 
 //Add Memory to Accumulator with Carry
-void ADC(CPUState* S){}
+void ADC(CPUState* S){
+    // uint8_t oppcode = S->memory[S->PC]; 
+
+    // uint8_t temp;
+    // if(oppcode == 0x69){
+    //     //immediate
+    //     temp = S->memory[S->PC + 1];
+    //     S->cycleDif = 2;
+    //     S->PC += 2;
+    // } else if(oppcode == 0x65){
+    //     //Zero page
+    //     uint8_t address = S->memory[S->PC+1]
+
+    //     S->cycleDif = 3;
+    //     S->PC += 2;
+    // } else if(oppcode == 0x75){
+    //     //Zero Page X
+    //     S->cycleDif = 4;
+    //     S->PC += 2;
+    // } else if(oppcode == 0x6D){
+    //     //Absolute
+    //     S->cycleDif = 4;
+    //     S->PC += 3;
+    // } else if(oppcode == 0x7D){
+    //     //Absolute X
+    //     S->cycleDif = 4;
+    //     S->PC += 3;
+    // } else if(oppcode == 0x79){
+    //     //Absolute Y
+    //     S->cycleDif = 4;
+    //     S->PC += 3;
+    // } else if(oppcode == 0x61){
+    //     //Indirect X
+    //     S->cycleDif = 6;
+    //     S->PC += 2;
+    // } else if(oppcode == 0x71){
+    //     //Indirect Y
+    //     S->cycleDif = 5;
+    //     S->PC += 2;
+    // } 
+
+}
 
 //And Memory with Accumulator
 void AND(CPUState* S){}
@@ -185,7 +257,7 @@ void BRK(CPUState* S){
     //push program counter
     S->PC++;
     S->SP++;
-    S->memory[S->SP] = S->PC;
+    // S->memory[S->SP] = S->PC; THATS WRONG PC IS 16 bits
 
     //push status
     S->SP++;
@@ -200,7 +272,7 @@ void BRK(CPUState* S){
     S->memory[S->SP] = P;
 
     //IRQ interrupt vector at $FFFE/F is loaded into the PC
-    S->PC = 0xFFFE;
+    // S->PC = 0xFFFE; THIS is wrong since its just an address that is located at FFFE/FFFF
 
 
     //break flag in the status set to one.
@@ -349,10 +421,30 @@ void INY(CPUState* S){
 }
 
 //Jump to New Location
-void JMP(CPUState* S){}
+void JMP(CPUState* S){
+    uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1];
+    if(S->memory[S->PC] == 0x4C){
+        //Absolute
+        S->PC = location;
+        S->cycleDif = 3;
+    } else if(S->memory[S->PC] == 0x6C) {
+        //Indirect
+        S->PC = (S->memory[location + 1] << 8) + S->memory[location];
+        S->cycleDif = 5;
+    }
+}
 
 //Jump to new Location Saving Return Address
-void JSR(CPUState* S){}
+void JSR(CPUState* S){
+    S->PC += 3;
+
+    S->SP += 2;
+    S->memory[S->SP] = S->PC >> 8;
+    S->memory[S->SP] = S->PC & 0xFF;
+    
+    S->cycleDif = 6;
+
+}
 
 //Load Accumulator with Memory
 void LDA(CPUState* S){}
@@ -460,11 +552,12 @@ void RTI(CPUState* S){
 
 //Return from Subroutine
 void RTS(CPUState* S){
-    S->PC = S->memory[S->SP]; 
-    S->SP--;
-
+    
+    S->PC = (S->memory[S->SP] << 8) + S->memory[S->SP - 1];
+    S->SP -= 2;
 
     S->cycleDif = 6;
+
 }
 
 //Subtract Memory from Accumulator
