@@ -6,7 +6,14 @@
 
 //initializes cpustate variables to starting values
 void initialize(CPUState* S){
-    FunctionPtr Instr[16][16] = {
+    //initialize variables 
+    S->PC = 0x1000;
+    S->SP = 4;
+}
+
+//To run an instruction based on its oppcode
+void Run(CPUState* S){
+    static const FunctionPtr Instr[16][16] = {
         {BRK, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr, PHP, ORA, ASL, nullptr, nullptr, ORA, ASL, nullptr},
         {BPL, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr, CLC, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr},
         {JSR, AND, nullptr, nullptr, BIT, AND, ROL, nullptr, PLP, AND, ROL, nullptr, BIT, AND, ROL, nullptr},
@@ -25,53 +32,109 @@ void initialize(CPUState* S){
         {BEQ, SBC, nullptr, nullptr, nullptr, SBC, INC, nullptr, SED, SBC, nullptr, nullptr, nullptr, SBC, INC, nullptr}
     };
 
-    uint8_t addressingMode[16][16] = {
-        {NA, INDX, 0, 0, 0, ZPG, ZPG, 0, NA, IMM, AA, 0, 0, ABS, ABS, 0},
-        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0},
-        {ABS, INDX, 0, 0, ZPG, ZPG, ZPG, 0, NA, IMM, AA, 0, ABS, ABS, ABS, 0},
-        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0},
-        {NA, INDX, 0, 0, 0, ZPG, ZPG, 0, NA, IMM, AA, 0, ABS, ABS, ABS, 0},
-        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0},
-        {NA, INDX, 0, 0, 0, ZPG, ZPG, 0, NA, IMM, AA, 0, IND, ABS, ABS, 0},
-        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0},
-        {0, INDX, 0, 0, ZPG, ZPG, ZPG, 0, NA, 0, NA, 0, ABS, ABS, ABS, 0},
-        {REL, INDY, 0, 0, ZPGX, ZPGX, ZPGY, 0, NA, ABSY, NA, 0, 0, ABSX, 0, 0},
-        {IMM, INDX, IMM, 0, ZPG, ZPG, ZPG, 0, NA, IMM, NA, 0, ABS, ABS, ABS, 0},
-        {REL, INDY, 0, 0, ZPGX, ZPGX, ZPGY, 0, NA, ABSY, NA, 0, ABSX, ABSX, ABSX, 0},
-        {IMM, INDX, 0, 0, ZPG, ZPG, ZPG, 0, NA, IMM, NA, 0, ABS, ABS, ABS, 0},
-        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0},
-        {IMM, INDX, 0, 0, ZPG, ZPG, ZPG, 0, NA, IMM, NA, 0, ABS, ABS, ABS, 0},
-        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, NA, ABSY, 0, 0, 0, ABSX, ABSX, 0}
+    static const uint8_t addressingMode[16][16] = {
+        {IMP, INDX, 0, 0, 0, ZPG, ZPG, 0, IMP, IMM, AA, 0, 0, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {ABS, INDX, 0, 0, ZPG, ZPG, ZPG, 0, IMP, IMM, AA, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {IMP, INDX, 0, 0, 0, ZPG, ZPG, 0, IMP, IMM, AA, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {IMP, INDX, 0, 0, 0, ZPG, ZPG, 0, IMP, IMM, AA, 0, IND, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {0, INDX, 0, 0, ZPG, ZPG, ZPG, 0, IMP, 0, IMP, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, ZPGX, ZPGX, ZPGY, 0, IMP, ABSY, IMP, 0, 0, ABSX, 0, 0},
+        {IMM, INDX, IMM, 0, ZPG, ZPG, ZPG, 0, IMP, IMM, IMP, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, ZPGX, ZPGX, ZPGY, 0, IMP, ABSY, IMP, 0, ABSX, ABSX, ABSX, 0},
+        {IMM, INDX, 0, 0, ZPG, ZPG, ZPG, 0, IMP, IMM, IMP, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {IMM, INDX, 0, 0, ZPG, ZPG, ZPG, 0, IMP, IMM, IMP, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0}
     };
 
-
-    //Copy Instr into S->Instr and addressingMode into S->addressingMode
-    for(int i = 0; i < 16; i++){
-        for(int j = 0; j < 16; j++){
-            S->Instr[i][j] = Instr[i][j];
-            S->addressingMode[i][j] = addressingMode[i][j];
-        }
-    }
-
-    //initialize variables 
-    S->PC = 0x1000;
-    S->SP = 4;
-}
-
-//To run an instruction based on its oppcode
-void Run(CPUState* S){
     uint8_t oppcode = S->memory[S->PC]; 
-    uint8_t aMode = S->addressingMode[oppcode >> 4][oppcode & 0b1111];
+    uint8_t aMode = addressingMode[oppcode >> 4][oppcode & 0b1111];
 
-    if(aMode == NA){
 
+    //based on addressing mode extract data and update cycles/ProgramCounter/target
+    if(aMode == IMP){
+        //Implied addressing
+        S->cycleDif = 2;
+        S->PC++;
     } else if(aMode == AA){
-
+        //Accumulator 
+        S->cycleDif = 2;
+        S->PC++;
     } else if(aMode == REL){
+        //Relative addressing
+        S->cycleDif = 2;
+        S->PC += 2;
+    }  else if(aMode == IMM){
+        //Immediate
+        S->cycleDif = 2;
+        *(S->target) = S->memory[S->PC];
         
+    } else if(aMode == IND){
+        //Indirect addressing
+        uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1];
+        S->PC = (S->memory[location + 1] << 8) + S->memory[location];
+        S->cycleDif = 5;
+
+    } else if(aMode == INDY){
+        //Indirect Y addressing
+        S->cycleDif = 5;
+
+    } else if(aMode == INDX){
+        //Indirect X addressing
+        S->cycleDif = 6;
+
+    } else if(aMode == ZPG){
+        //Zero page addressing
+        S->cycleDif = 3;
+        uint8_t location = S->memory[S->PC + 1];
+        S->target = S->memory + location; 
+        S->PC += 2;
+
+    } else if(aMode == ZPGX){
+        //Zero page X addressing
+        S->cycleDif = 4;
+        uint8_t location = S->memory[S->PC + 1] + S->X;
+        S->target = S->memory + location;
+        S->PC += 2;
+
+    } else if(aMode == ZPGY){
+        //Zero page Y addressing
+        S->cycleDif = 4;
+        uint8_t location = S->memory[S->PC + 1] + S->Y;
+        S->target = S->memory + location;
+        S->PC += 2;
+
+    } else if(aMode = ABS){
+        //Absolute addressing
+        S->cycleDif = 4;
+        uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1];
+        S->target = S->memory + location;
+        S->PC += 3;
+
+    } else if(aMode = ABSX){
+        //Absolute X addressing
+        S->cycleDif = 4;
+        uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1] + S->X;
+        S->target = S->memory + location;
+        S->PC += 3;
+
+    } else if(aMode = ABSY){
+        //Absolute Y addressing
+        S->cycleDif = 4;
+        uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1] + S->Y;
+        S->target = S->memory + location;
+        S->PC += 3;
+
+    } else {
+        printf("addressing mode isn't valid\n");
+        exit(1);
     }
     //run the instruction
-    S->Instr[oppcode >> 4][oppcode & 0b1111](S);
+    Instr[oppcode >> 4][oppcode & 0b1111](S);
 }
 
 //Add Memory to Accumulator with Carry

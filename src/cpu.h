@@ -19,19 +19,19 @@
 #include <iostream>
 #include <cstdint>
 
-#define AA 1 //always 2
-#define REL 2 //always 2 (+1 if branch succeeds +2 if to a new page)
-#define IMM 3 //always 2 
-#define IND 4 //only for JMP and always uses 5 cycles
-#define INDY 5 //always 5 (+1 if page crossed)
-#define INDX 6 //always 6
-#define ZPG 7 //usually 3 (ASL = 5)(DEC = 5)(INC = 5)(LSR = 5)(ROL = 5)(ROR = 5)
-#define ZPGX 8 //usually 4 (ASL = 6)(DEC = 6)(INC = 6)(LSR = 6)(ROL = 6)(ROR = 6)
-#define ZPGY 9 //always 4
-#define ABS 10 //usually 4 (ASL = 6)(DEC = 6)(INC = 6)(LSR = 6)(ROL = 6)(ROR = 6)     (JSR = 6)(JMP = 3)
-#define ABSX 11 //usually 4 (+1 if page crossed)     (ASL = 7)(DEC = 7)(INC = 7)(LSR = 7)(ROL = 7)(ROR = 7) (STA = 5)
-#define ABSY 12 //usually 4 (+1 if page crossed)     (STA = 5)
-#define NA 13 //usually 2 (PHA = 3)(PHP = 3)(PLA = 4)(PLP = 4)(RTI = 6)(RTS = 6)(BRK = 7)
+#define AA 1 //always 2 cycles                                                                                           //always 1 byte
+#define REL 2 //always 2 (+1 if branch succeeds +2 if to a new page)                                                     //always 2 bytes
+#define IMM 3 //always 2                                                                                                 //always 2 bytes
+#define IND 4 //only for JMP and always uses 5 cycles                                                                    //always 3 bytes
+#define INDY 5 //always 5 (+1 if page crossed)                                                                           //always 2 bytes
+#define INDX 6 //always 6                                                                                                //always 2 bytes
+#define ZPG 7 //usually 3 (ASL = 5)(DEC = 5)(INC = 5)(LSR = 5)(ROL = 5)(ROR = 5)                                         //always 2 bytes
+#define ZPGX 8 //usually 4 (ASL = 6)(DEC = 6)(INC = 6)(LSR = 6)(ROL = 6)(ROR = 6)                                        //always 2 bytes
+#define ZPGY 9 //always 4                                                                                                //always 2 bytes
+#define ABS 10 //usually 4 (ASL = 6)(DEC = 6)(INC = 6)(LSR = 6)(ROL = 6)(ROR = 6)     (JSR = 6)(JMP = 3)                 //always 3 bytes
+#define ABSX 11 //usually 4 (+1 if page crossed)     (ASL = 7)(DEC = 7)(INC = 7)(LSR = 7)(ROL = 7)(ROR = 7) (STA = 5)    //always 3 bytes
+#define ABSY 12 //usually 4 (+1 if page crossed)     (STA = 5)                                                           //always 3 bytes
+#define IMP 13 //usually 2 (PHA = 3)(PHP = 3)(PLA = 4)(PLP = 4)(RTI = 6)(RTS = 6)(BRK = 7)                               //always 1 byte
 
 
 using namespace std;
@@ -52,12 +52,14 @@ typedef struct CPUState{
     bool B;
     bool V;
     bool N;
+    //bool halt;
 
-    FunctionPtr Instr[16][16];
-    uint8_t addressingMode[16][16];
+    //meta data about instruction
+    uint8_t cycleDif;
+    uint8_t *target;
 
-    bool halt;
-    int cycleDif;
+
+
     uint8_t memory[65536];
 
 
