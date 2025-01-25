@@ -58,152 +58,171 @@ void Run(CPUState* S){
     //based on addressing mode extract data and update cycles/ProgramCounter/target
     if(aMode == IMP){
         //Implied addressing
+
         S->cycleDif = 2;
         S->PC++;
     } else if(aMode == AA){
         //Accumulator 
+        S->target = &(S->A);
+
         S->cycleDif = 2;
         S->PC++;
     } else if(aMode == REL){
         //Relative addressing
+        S->target = S->memory + S->PC + 1;
+
         S->cycleDif = 2;
         S->PC += 2;
     }  else if(aMode == IMM){
         //Immediate
+        S->target = S->memory + S->PC + 1;
+
         S->cycleDif = 2;
-        *(S->target) = S->memory[S->PC];
-        
+        S->PC += 2;
+
     } else if(aMode == IND){
         //Indirect addressing
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1];
-        S->PC = (S->memory[location + 1] << 8) + S->memory[location];
+        uint16_t actualLocation = (S->memory[location + 1] << 8) + S->memory[location];
+        S->target = S->memory + actualLocation;
+
         S->cycleDif = 5;
+        S->PC += 3;
 
     } else if(aMode == INDY){
-        //Indirect Y addressing
-        S->cycleDif = 5;
+        //Indirect Y
+        uint8_t location = S->memory[S->PC + 1];
+        uint16_t oldLocation = (S->memory[location + 1] << 8) + S->memory[location];
+        uint16_t actualLocation = oldLocation + S->Y;
+        S->target = S->memory + actualLocation;
 
+        S->cycleDif = (oldLocation >> 8 == actualLocation >> 8) ? 5 : 6;
+        S->PC += 2;
     } else if(aMode == INDX){
-        //Indirect X addressing
-        S->cycleDif = 6;
+        //Indirect X
+        uint8_t location = S->memory[S->PC + 1] + S->X;
+        uint16_t actualLocation = (S->memory[location + 1] << 8) + S->memory[location];
+        S->target = S->memory + actualLocation;
 
+        S->cycleDif = 6;
+        S->PC += 2;
+        
     } else if(aMode == ZPG){
         //Zero page addressing
-        S->cycleDif = 3;
         uint8_t location = S->memory[S->PC + 1];
         S->target = S->memory + location; 
+
+        S->cycleDif = 3;
         S->PC += 2;
 
     } else if(aMode == ZPGX){
         //Zero page X addressing
-        S->cycleDif = 4;
         uint8_t location = S->memory[S->PC + 1] + S->X;
         S->target = S->memory + location;
+
+        S->cycleDif = 4;
         S->PC += 2;
 
     } else if(aMode == ZPGY){
         //Zero page Y addressing
-        S->cycleDif = 4;
         uint8_t location = S->memory[S->PC + 1] + S->Y;
         S->target = S->memory + location;
+
+        S->cycleDif = 4;
         S->PC += 2;
 
-    } else if(aMode = ABS){
+    } else if(aMode == ABS){
         //Absolute addressing
-        S->cycleDif = 4;
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1];
         S->target = S->memory + location;
+
+        S->cycleDif = 4;
         S->PC += 3;
 
-    } else if(aMode = ABSX){
+    } else if(aMode == ABSX){
         //Absolute X addressing
-        S->cycleDif = 4;
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1] + S->X;
         S->target = S->memory + location;
+
+        S->cycleDif = 4;
         S->PC += 3;
 
-    } else if(aMode = ABSY){
+    } else if(aMode == ABSY){
         //Absolute Y addressing
-        S->cycleDif = 4;
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1] + S->Y;
         S->target = S->memory + location;
+
+        S->cycleDif = 4;
         S->PC += 3;
 
     } else {
         printf("addressing mode isn't valid\n");
         exit(1);
     }
+
     //run the instruction
     Instr[oppcode >> 4][oppcode & 0b1111](S);
 }
 
 //Add Memory to Accumulator with Carry
 void ADC(CPUState* S){
-    // uint8_t oppcode = S->memory[S->PC]; 
+    uint8_t oldA = S->A;
+    S->A = S->A + *(S->target) + S->C;
+    
+    
+    
+    uint8_t oldASign = (oldA >> 7) & 1;
+    uint8_t targetSign = (*(S->target) >> 7) & 1;
+    uint8_t resultSign = (S->A >> 7) & 1;
+    //check if overflow
+    //if target and oldA have the same sign and result has opposite sign
+    S->V = (oldASign == targetSign && resultSign != oldASign) ? 1 : 0;
 
-    // uint8_t temp;
-    // if(oppcode == 0x69){
-    //     //immediate
-    //     temp = S->memory[S->PC + 1];
-    //     S->cycleDif = 2;
-    //     S->PC += 2;
-    // } else if(oppcode == 0x65){
-    //     //Zero page
-    //     uint8_t address = S->memory[S->PC+1]
+    //check if carry
+    S->C = (S->A < oldA || S->A < *(S->target)) ? 1 : 0;
+    
+    S->Z = (S->A == 0) ? 1 : 0;
 
-    //     S->cycleDif = 3;
-    //     S->PC += 2;
-    // } else if(oppcode == 0x75){
-    //     //Zero Page X
-    //     S->cycleDif = 4;
-    //     S->PC += 2;
-    // } else if(oppcode == 0x6D){
-    //     //Absolute
-    //     S->cycleDif = 4;
-    //     S->PC += 3;
-    // } else if(oppcode == 0x7D){
-    //     //Absolute X
-    //     S->cycleDif = 4;
-    //     S->PC += 3;
-    // } else if(oppcode == 0x79){
-    //     //Absolute Y
-    //     S->cycleDif = 4;
-    //     S->PC += 3;
-    // } else if(oppcode == 0x61){
-    //     //Indirect X
-    //     S->cycleDif = 6;
-    //     S->PC += 2;
-    // } else if(oppcode == 0x71){
-    //     //Indirect Y
-    //     S->cycleDif = 5;
-    //     S->PC += 2;
-    // } 
-
+    //extracted bit
+    S->N = ((S->A >> 7) & 1) ? 1 : 0;
 }
 
 //And Memory with Accumulator
-void AND(CPUState* S){}
+void AND(CPUState* S){
+    S->A = S->A & *(S->target);
+
+    //zero
+    S->Z = (S->A == 0) ? 1 : 0;
+
+    //negative
+    S->N = ((S->A >> 7) & 1) ? 1 : 0;
+}
 
 //Shift left one bit (memory or accumulator)
-void ASL(CPUState* S){}
+void ASL(CPUState* S){
+    S->cycleDif += 2;
+
+    //update carry
+    S->C = (*(S->target) >> 7) & 1;
+    //perform rotate
+    *(S->target) = *(S->target) << 1;
+
+    //zero
+    S->Z = (*(S->target) == 0) ? 1 : 0;
+
+    //negative
+    S->N = ((*(S->target) >> 7) & 1) ? 1 : 0;
+}
 
 //Branch on Carry clear
 void BCC(CPUState* S){
-    //extract the argument
-    uint16_t oldPC = S->PC;
-    S->PC++;
-    int8_t offset = S->memory[S->PC];
-    S->PC++;
-
-    if(S->C == 1){
-        //branch not taken
-        S->cycleDif = 2;
-    } else {
+    if(S->C == 0){
         //branch taken
+        int8_t offset = *(S->target);
         S->PC += offset;
 
         //put correct cycleDif based on if it crossed a page
-        S->cycleDif = (oldPC >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
     }
 
 }
@@ -211,219 +230,186 @@ void BCC(CPUState* S){
 //Branch on Carry set
 void BCS(CPUState* S){
     //extract the argument
-    S->PC++;
-    int8_t offset = S->memory[S->PC];
-    S->PC++;
 
-    if(S->C == 0){
-        //branch not taken
-        S->cycleDif = 2;
-    } else {
+    if(S->C == 1){
         //branch taken
-        uint16_t oldPC = S->PC;
+        int8_t offset = *(S->target);
         S->PC += offset;
 
         //put correct cycleDif based on if it crossed a page
-        S->cycleDif = (oldPC >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
     }
 }
 
 //Branch on result zero
 void BEQ(CPUState* S){
-    //extract the argument
-    S->PC++;
-    int8_t offset = S->memory[S->PC];
-    S->PC++;
-
-    if(S->Z == 0){
-        //branch not taken
-        S->cycleDif = 2;
-    } else {
+    if(S->Z == 1){
         //branch taken
-        uint16_t oldPC = S->PC;
+        int8_t offset = *(S->target);
         S->PC += offset;
 
         //put correct cycleDif based on if it crossed a page
-        S->cycleDif = (oldPC >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
     }
 }
 
 //Test Bits in memory with accumulator
-void BIT(CPUState* S){}
+void BIT(CPUState* S){
+    uint8_t result = S->A & *(S->target);
+    S->Z = result == 0;
+    S->V = (*(S->target) >> 6) & 1;
+    S->N = (*(S->target) >> 7) & 1;
+}
 
 //Branch on result minus
 void BMI(CPUState* S){
-    //extract the argument
-    S->PC++;
-    int8_t offset = S->memory[S->PC];
-    S->PC++;
-
-    if(S->N == 0){
-        //branch not taken
-        S->cycleDif = 2;
-    } else {
+    if(S->N == 1){
         //branch taken
-        uint16_t oldPC = S->PC;
+        int8_t offset = *(S->target);
         S->PC += offset;
 
         //put correct cycleDif based on if it crossed a page
-        S->cycleDif = (oldPC >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
     }
 }
 
 //branch on result not zero
 void BNE(CPUState* S){
-    //extract the argument
-    S->PC++;
-    int8_t offset = S->memory[S->PC];
-    S->PC++;
-
-    if(S->Z == 1){
-        //branch not taken
-        S->cycleDif = 2;
-    } else {
+    if(S->Z == 0){
         //branch taken
-        uint16_t oldPC = S->PC;
+        int8_t offset = *(S->target);
         S->PC += offset;
 
         //put correct cycleDif based on if it crossed a page
-        S->cycleDif = (oldPC >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
     }
 }
 
 //branch on result plus
 void BPL(CPUState* S){
-    //extract the argument
-    S->PC++;
-    int8_t offset = S->memory[S->PC];
-    S->PC++;
-
-    if(S->N == 1){
-        //branch not taken
-        S->cycleDif = 2;
-    } else {
+    if(S->N == 0){
         //branch taken
-        uint16_t oldPC = S->PC;
+        int8_t offset = *(S->target);
         S->PC += offset;
 
         //put correct cycleDif based on if it crossed a page
-        S->cycleDif = (oldPC >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
     }
 }
 
 //force break (force interrupt) program counter then status
 void BRK(CPUState* S){
-    S->B = 1;
+    // S->B = 1;
 
     
 
-    //push program counter
-    S->PC++;
-    S->SP++;
-    // S->memory[S->SP] = S->PC; THATS WRONG PC IS 16 bits
+    // //push program counter
+    // S->PC++;
+    // S->SP++;
+    // // S->memory[S->SP] = S->PC; THATS WRONG PC IS 16 bits
 
-    //push status
-    S->SP++;
-    uint8_t P = 0b00100000;
-    if(S->C == true) P += 0b00000001;
-    if(S->Z == true) P += 0b00000010;
-    if(S->I == true) P += 0b00000100;
-    if(S->D == true) P += 0b00001000;
-    if(S->B == true) P += 0b00010000;
-    if(S->V == true) P += 0b01000000;
-    if(S->N == true) P += 0b10000000;
-    S->memory[S->SP] = P;
+    // //push status
+    // S->SP++;
+    // uint8_t P = 0b00100000;
+    // if(S->C == true) P += 0b00000001;
+    // if(S->Z == true) P += 0b00000010;
+    // if(S->I == true) P += 0b00000100;
+    // if(S->D == true) P += 0b00001000;
+    // if(S->B == true) P += 0b00010000;
+    // if(S->V == true) P += 0b01000000;
+    // if(S->N == true) P += 0b10000000;
+    // S->memory[S->SP] = P;
 
-    //IRQ interrupt vector at $FFFE/F is loaded into the PC
-    // S->PC = 0xFFFE; THIS is wrong since its just an address that is located at FFFE/FFFF
-
-
-    //break flag in the status set to one.
-    S->B = 1;
+    // //IRQ interrupt vector at $FFFE/F is loaded into the PC
+    // // S->PC = 0xFFFE; THIS is wrong since its just an address that is located at FFFE/FFFF
 
 
-    S->cycleDif = 7;
+    // //break flag in the status set to one.
+    // S->B = 1;
+
+
+    // S->cycleDif = 7;
+    
 }
 
 //Branch on Overflow Clear
 void BVC(CPUState* S){
-    //extract the argument
-    S->PC++;
-    int8_t offset = S->memory[S->PC];
-    S->PC++;
-
-    if(S->V == 1){
-        //branch not taken
-        S->cycleDif = 2;
-    } else {
+    if(S->V == 0){
         //branch taken
-        uint16_t oldPC = S->PC;
+        int8_t offset = *(S->target);
         S->PC += offset;
 
         //put correct cycleDif based on if it crossed a page
-        S->cycleDif = (oldPC >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
     }
 }
 
 //Branch on Overflow Set
 void BVS(CPUState* S){
-    //extract the argument
-    S->PC++;
-    int8_t offset = S->memory[S->PC];
-    S->PC++;
-
-    if(S->V == 0){
-        //branch not taken
-        S->cycleDif = 2;
-    } else {
+    if(S->V == 1){
         //branch taken
-        uint16_t oldPC = S->PC;
+        int8_t offset = *(S->target);
         S->PC += offset;
 
         //put correct cycleDif based on if it crossed a page
-        S->cycleDif = (oldPC >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
     }
 }
 
 //Clear Carry Flag
 void CLC(CPUState* S){
     S->C = 0;
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Clear Decimal Mode
 void CLD(CPUState* S){
     S->D = 0;
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Clear Interrupt Disable Bit
 void CLI(CPUState* S){
     S->I = 0;
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Clear Overflow Flag
 void CLV(CPUState* S){
     S->V = 0;
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Compare Memory and Accumulator
-void CMP(CPUState* S){}
+void CMP(CPUState* S){
+    uint8_t result = S->A - *(S->target);
+    S->C = S->A >= *(S->target);
+    S->Z = S->A == *(S->target);
+    S->N = (result >> 7) & 1;
+}
 
 //Compare Memory and Index X
-void CPX(CPUState* S){}
+void CPX(CPUState* S){
+    uint8_t result = S->X - *(S->target);
+    S->C = S->X >= *(S->target);
+    S->Z = S->X == *(S->target);
+    S->N = (result >> 7) & 1;
+}
 
 //Compare Memory and Index Y
-void CPY(CPUState* S){}
+void CPY(CPUState* S){
+    uint8_t result = S->Y - *(S->target);
+    S->C = S->Y >= *(S->target);
+    S->Z = S->Y == *(S->target);
+    S->N = (result >> 7) & 1;
+}
 
 //Decrement Memory by One
-void DEC(CPUState* S){}
+void DEC(CPUState* S){
+    *(S->target) -= 1;
+
+    S->Z = (*(S->target) == 0) ? 1 : 0;
+
+    S->N = ((*(S->target) >> 7) & 1) ? 1 : 0;
+
+    S->cycleDif += 2;
+}
 
 //Decrement Index X by One
 void DEX(CPUState* S){
@@ -431,11 +417,7 @@ void DEX(CPUState* S){
     
     S->Z = (S->X == 0) ? 1 : 0;
 
-    //extracted bit
     S->N = ((S->X >> 7) & 1) ? 1 : 0;
-
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Decrement Index Y by One
@@ -443,19 +425,31 @@ void DEY(CPUState* S){
     S->Y--;
     
     S->Z = (S->Y == 0) ? 1 : 0;
-
     //extracted bit
     S->N = ((S->Y >> 7) & 1) ? 1 : 0;
-
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //"Exclusive-or" Memory with Accumulator
-void EOR(CPUState* S){}
+void EOR(CPUState* S){
+    S->A = S->A ^ *(S->target);
+
+    //zero
+    S->Z = (S->A == 0) ? 1 : 0;
+
+    //negative
+    S->N = ((S->A >> 7) & 1) ? 1 : 0;
+}
 
 //Increment Memory by One
-void INC(CPUState* S){}
+void INC(CPUState* S){
+    *(S->target) += 1;
+
+    S->Z = (*(S->target) == 0) ? 1 : 0;
+
+    S->N = ((*(S->target) >> 7) & 1) ? 1 : 0;
+
+    S->cycleDif += 2;
+}
 
 //Increment Index X by One
 void INX(CPUState* S){
@@ -465,9 +459,6 @@ void INX(CPUState* S){
 
     //extracted bit
     S->N = ((S->X >> 7) & 1) ? 1 : 0;
-
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Increment Index Y by one
@@ -478,70 +469,108 @@ void INY(CPUState* S){
 
     //extracted bit
     S->N = ((S->Y >> 7) & 1) ? 1 : 0;
-
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Jump to New Location
 void JMP(CPUState* S){
-    uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1];
-    if(S->memory[S->PC] == 0x4C){
-        //Absolute
-        S->PC = location;
-        S->cycleDif = 3;
-    } else if(S->memory[S->PC] == 0x6C) {
-        //Indirect
-        S->PC = (S->memory[location + 1] << 8) + S->memory[location];
-        S->cycleDif = 5;
-    }
+    //check if absolute
+    if(S->memory[S->PC - 3] == 0x4C) S->cycleDif = 3;
+
+    S->PC = S->target - S->memory;
 }
 
 //Jump to new Location Saving Return Address
 void JSR(CPUState* S){
-    S->PC += 3;
-
-    S->SP += 2;
-    S->memory[S->SP] = S->PC >> 8;
+    //push PC to stack
+    S->SP++;
     S->memory[S->SP] = S->PC & 0xFF;
+    S->SP++;
+    S->memory[S->SP] = S->PC >> 8;
     
-    S->cycleDif = 6;
+    //jump to target address
+    S->PC = S->target - S->memory;
 
+    S->cycleDif += 2;
 }
 
 //Load Accumulator with Memory
-void LDA(CPUState* S){}
+void LDA(CPUState* S){
+    S->A = *(S->target);
+
+    //zero
+    S->Z = (S->A == 0) ? 1 : 0;
+
+    //negative
+    S->N = ((S->A >> 7) & 1) ? 1 : 0;
+}
 
 //Load Index x with Memory
-void LDX(CPUState* S){}
+void LDX(CPUState* S){
+    S->X = *(S->target);
+
+    //zero
+    S->Z = (S->X == 0) ? 1 : 0;
+
+    //negative
+    S->N = ((S->X >> 7) & 1) ? 1 : 0;
+}
 
 //Load Index Y with Memory
-void LDY(CPUState* S){}
+void LDY(CPUState* S){
+    S->Y = *(S->target);
+
+    //zero
+    S->Z = (S->Y == 0) ? 1 : 0;
+
+    //negative
+    S->N = ((S->Y >> 7) & 1) ? 1 : 0;
+}
 
 //Shift One Bit Right (Memory or Accumulator)
-void LSR(CPUState* S){}
+void LSR(CPUState* S){
+    S->cycleDif += 2;
+
+    //update carry
+    S->C = *(S->target) & 1;
+    //perform rotate
+    *(S->target) = *(S->target) >> 1;
+
+    //zero
+    S->Z = (*(S->target) == 0) ? 1 : 0;
+
+    //negative
+    S->N = ((*(S->target) >> 7) & 1) ? 1 : 0;
+}
 
 //No Operation
 void NOP(CPUState* S){
-    S->cycleDif = 2;
-    S->PC++;
+    //its here to avoid errors
+    S->A++;
+    S->A--;
 }
 
 //"OR" Memory with Accumulator
-void ORA(CPUState* S){}
+void ORA(CPUState* S){
+    
+    S->A = S->A | *(S->target);
+
+    //zero
+    S->Z = (S->A == 0) ? 1 : 0;
+
+    //negative
+    S->N = ((S->A >> 7) & 1) ? 1 : 0;
+}
 
 //Push Accumulator on Stack
 void PHA(CPUState* S){
     S->SP++;
     S->memory[S->SP] = S->A;
 
-    S->cycleDif = 3;
-    S->PC++;
+    S->cycleDif += 1;
 }
 
 //Push Processor Status on Stack
 void PHP(CPUState* S){
-    S->SP++;
     uint8_t P = 0b00100000;
     if(S->C == true) P += 0b00000001;
     if(S->Z == true) P += 0b00000010;
@@ -550,10 +579,11 @@ void PHP(CPUState* S){
     if(S->B == true) P += 0b00010000;
     if(S->V == true) P += 0b01000000;
     if(S->N == true) P += 0b10000000;
+
+    S->SP++;
     S->memory[S->SP] = P;
 
-    S->cycleDif = 3;
-    S->PC++;
+    S->cycleDif += 1;
 }
 
 //Pull Accumulator from Stack
@@ -566,14 +596,14 @@ void PLA(CPUState* S){
     //extracted bit
     S->N = ((S->A >> 7) & 1) ? 1 : 0;
 
-    S->cycleDif = 4;
-    S->PC++;
+    S->cycleDif += 2;
 }
 
 //Pull Processor Status from Stack
 void PLP(CPUState* S){
     uint8_t temp = S->memory[S->SP];
     S->SP--;
+
     S->C = (((temp >> 0) & 1) == 0) ? 0 : 1;
     S->Z = (((temp >> 1) & 1) == 0) ? 0 : 1;
     S->I = (((temp >> 2) & 1) == 0) ? 0 : 1;
@@ -582,15 +612,50 @@ void PLP(CPUState* S){
     S->V = (((temp >> 6) & 1) == 0) ? 0 : 1;
     S->N = (((temp >> 7) & 1) == 0) ? 0 : 1;
 
-    S->cycleDif = 4;
-    S->PC++;
+    S->cycleDif += 2;
 }
 
 //Rotate One Bit Left (Memory or Accumulator)
-void ROL(CPUState* S){}
+void ROL(CPUState* S){
+    S->cycleDif += 2;
+
+    //save 7th bit
+    uint8_t temp = (*(S->target) >> 7) & 1;
+    //perform rotate
+    *(S->target) = *(S->target) << 1;
+    //update 0th bit to equal carry
+    *(S->target) = *(S->target) | S->C;
+    //update carry
+    S->C = temp;
+
+    //zero
+    S->Z = (*(S->target) == 0) ? 1 : 0;
+
+    //negative
+    S->N = ((*(S->target) >> 7) & 1) ? 1 : 0;
+
+}
 
 //Rotate One Bit Right (Memory or Accumulator)
-void ROR(CPUState* S){}
+void ROR(CPUState* S){
+    S->cycleDif += 2;
+
+    //save 0th bit
+    uint8_t temp = *(S->target) & 1;
+    //perform rotate
+    *(S->target) = *(S->target) >> 1;
+    //set 7th bit to equal carry
+    *(S->target) = (*(S->target) & 0x7F) | (S->C << 7);
+    //update carry
+    S->C = temp;
+
+    //zero
+    S->Z = (*(S->target) == 0) ? 1 : 0;
+
+    //negative
+    S->N = ((*(S->target) >> 7) & 1) ? 1 : 0;
+
+}
 
 //Return from Interrupt
 void RTI(CPUState* S){
@@ -607,54 +672,74 @@ void RTI(CPUState* S){
     S->N = (((temp >> 7) & 1) == 0) ? 0 : 1;
 
     //pull program counter
-    S->PC = S->memory[S->SP]; 
-    S->SP--;
+    S->PC = (S->memory[S->SP] << 8) + S->memory[S->SP - 1]; 
+    S->SP -= 2;
 
-    S->cycleDif = 6;
+    S->cycleDif += 4;
 }
 
 //Return from Subroutine
 void RTS(CPUState* S){
-    
+    //pull program counter
     S->PC = (S->memory[S->SP] << 8) + S->memory[S->SP - 1];
     S->SP -= 2;
 
-    S->cycleDif = 6;
+    S->cycleDif += 4;
 
 }
 
 //Subtract Memory from Accumulator
-void SBC(CPUState* S){}
+void SBC(CPUState* S){
+    uint8_t oldA = S->A;
+    S->A = S->A - *(S->target) - (1 - S->C);
+    
+    
+    
+    uint8_t oldASign = (oldA >> 7) & 1;
+    uint8_t targetSign = (*(S->target) >> 7) & 1;
+    uint8_t resultSign = (S->A >> 7) & 1;
+    //check if overflow
+    //if target and oldA have the same sign and result has opposite sign
+    S->V = (oldASign == targetSign && resultSign != oldASign) ? 1 : 0;
+
+    //check if carry
+    S->C = (S->A < oldA || S->A < *(S->target)) ? 0 : 1;
+    
+    S->Z = (S->A == 0) ? 1 : 0;
+
+    //extracted bit
+    S->N = ((S->A >> 7) & 1) ? 1 : 0;
+}
 
 //Set Carry Flag
 void SEC(CPUState* S){
     S->C = 1;
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Set Decimal Mode
 void SED(CPUState* S){
     S->D = 1;
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Set Interrupt Disable Status
 void SEI(CPUState* S){
     S->I = 1;
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Store Accumulator in Memory
-void STA(CPUState* S){}
+void STA(CPUState* S){
+    *(S->target) = S->A;
+}
 
 //Store Index X in Memory
-void STX(CPUState* S){}
+void STX(CPUState* S){
+    *(S->target) = S->X;
+}
 
 //Store Index Y in Memory
-void STY(CPUState* S){}
+void STY(CPUState* S){
+    *(S->target) = S->Y;
+}
 
 //Transfer Accumulator to Index X
 void TAX(CPUState* S){
@@ -664,9 +749,6 @@ void TAX(CPUState* S){
 
     //extracted bit
     S->N = ((S->X >> 7) & 1) ? 1 : 0;
-
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Transfer Accumulator to Index Y
@@ -677,9 +759,6 @@ void TAY(CPUState* S){
 
     //extracted bit
     S->N = ((S->Y >> 7) & 1) ? 1 : 0;
-
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Transfer Stack Pointer to Index X
@@ -690,9 +769,6 @@ void TSX(CPUState* S){
 
     //extracted bit
     S->N = ((S->X >> 7) & 1) ? 1 : 0;
-
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Transfer index X to Accumulator 
@@ -703,17 +779,11 @@ void TXA(CPUState* S){
 
     //extracted bit
     S->N = ((S->A >> 7) & 1) ? 1 : 0;
-
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Transfer Index X to Stack pointer
 void TXS(CPUState* S){
     S->SP = S->X;
-
-    S->PC++;
-    S->cycleDif = 2;
 }
 
 //Transfer Index Y to Accumulator
@@ -724,7 +794,4 @@ void TYA(CPUState* S){
 
     //extracted bit
     S->N = ((S->A >> 7) & 1) ? 1 : 0;
-
-    S->PC++;
-    S->cycleDif = 2;
 }

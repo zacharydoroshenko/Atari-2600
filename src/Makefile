@@ -26,6 +26,10 @@ $(TARGET): $(OBJS)
 cpuTest: cpuTest.cpp cpu.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
+# Rule to build test
+test: test.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $^
+
 # Cleanup
 clean:
 	rm -f $(OBJS) $(TARGET) cpuTest

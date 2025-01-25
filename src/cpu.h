@@ -1,6 +1,9 @@
 //Helpful links
 //forums.atariage.com/topic/27190-session-5-memory-architecture/
 //nesdev.org/obelisk-6502-guide/reference.html
+//rylev.github.io/DMG-01/public/book/cpu/
+//https://www.atariarchives.org/mapping/memorymap.php
+//https://forums.atariage.com/topic/192418-mirrored-memory/
 
 //Assumptions made:
 //decrement is done by I--
