@@ -540,7 +540,8 @@ int main(){
     S->C = 0;
 
     Run(S);
-    assert(S->memory[S->SP] == 0b10101010);
+
+    assert(S->memory[S->SP + 1] == 0b10101010);
     assert(S->cycleDif == 3);
 
     //pull
@@ -612,7 +613,7 @@ int main(){
     S->C = 0;
 
     Run(S);
-    assert(S->memory[S->SP] == 0b10101010);
+    assert(S->memory[S->SP + 1] == 0b10101010);
     assert(S->cycleDif == 3);
 
     //pull

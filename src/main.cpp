@@ -29,8 +29,8 @@ int main(){
     //TODO make while loop good
     //While loop to create frame buffer
     int i = 0;
-    while(i < 3){
-        printf("0x%X\n", state->memory[state->PC]);
+    while(i < 550){
+        printf("%X, 0x%X\n", state->PC, state->memory[state->PC]);
         Run(state);
         // printf("%d\n", state->cycleDif);
         
@@ -38,6 +38,38 @@ int main(){
         
         i++;
     }
+    //0x78 SEI
+    //0xD8 CLD
+    //0xA2 LDX
+    //0x9A TXS
+    //0xA2 LDX
+    //0x20 JSR
+    
+
+    //ClearMem
+    //0xA9 LDA
+    //0xE8 INX
+    //0x95 STA
+    //0xD0 BNE
+
+    //0xE8 INX
+    //0x95 STA
+    //0xD0 BNE
+
+    //0xE8 INX
+    //0x95 STA
+    //0xD0 BNE
+
+    //0x60 RTS
+
+    //0xA9 LDA
+    //0x8D STA 
+    //0x85 STA
+    //0x20 JSR
+
+    //ClrGam
+    //
+    
 
 
 

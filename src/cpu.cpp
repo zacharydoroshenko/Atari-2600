@@ -8,7 +8,11 @@
 void initialize(CPUState* S){
     //initialize variables 
     S->PC = 0x1000;
-    S->SP = 4;
+    S->SP = 0xFF;
+}
+
+uint16_t MemmoryMirror(uint16_t s){
+    return s % 0x2000;
 }
 
 //To run an instruction based on its oppcode
@@ -134,8 +138,8 @@ void Run(CPUState* S){
     } else if(aMode == ABS){
         //Absolute addressing
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1];
+        location = MemmoryMirror(location);
         S->target = S->memory + location;
-
         S->cycleDif = 4;
         S->PC += 3;
 
@@ -482,10 +486,10 @@ void JMP(CPUState* S){
 //Jump to new Location Saving Return Address
 void JSR(CPUState* S){
     //push PC to stack
-    S->SP++;
-    S->memory[S->SP] = S->PC & 0xFF;
-    S->SP++;
     S->memory[S->SP] = S->PC >> 8;
+    S->SP--;
+    S->memory[S->SP] = S->PC & 0xFF;
+    S->SP--;
     
     //jump to target address
     S->PC = S->target - S->memory;
@@ -563,8 +567,8 @@ void ORA(CPUState* S){
 
 //Push Accumulator on Stack
 void PHA(CPUState* S){
-    S->SP++;
     S->memory[S->SP] = S->A;
+    S->SP--;
 
     S->cycleDif += 1;
 }
@@ -580,16 +584,16 @@ void PHP(CPUState* S){
     if(S->V == true) P += 0b01000000;
     if(S->N == true) P += 0b10000000;
 
-    S->SP++;
     S->memory[S->SP] = P;
+    S->SP--;
 
     S->cycleDif += 1;
 }
 
 //Pull Accumulator from Stack
 void PLA(CPUState* S){
+    S->SP++;
     S->A = S->memory[S->SP];
-    S->SP--;
 
     S->Z = (S->A == 0) ? 1 : 0;
 
@@ -601,8 +605,8 @@ void PLA(CPUState* S){
 
 //Pull Processor Status from Stack
 void PLP(CPUState* S){
+    S->SP++;
     uint8_t temp = S->memory[S->SP];
-    S->SP--;
 
     S->C = (((temp >> 0) & 1) == 0) ? 0 : 1;
     S->Z = (((temp >> 1) & 1) == 0) ? 0 : 1;
@@ -661,8 +665,9 @@ void ROR(CPUState* S){
 void RTI(CPUState* S){
 
     //pull processor Status from Stack
+    S->SP++;
     uint8_t temp = S->memory[S->SP];
-    S->SP--;
+    
     S->C = (((temp >> 0) & 1) == 0) ? 0 : 1;
     S->Z = (((temp >> 1) & 1) == 0) ? 0 : 1;
     S->I = (((temp >> 2) & 1) == 0) ? 0 : 1;
@@ -672,8 +677,9 @@ void RTI(CPUState* S){
     S->N = (((temp >> 7) & 1) == 0) ? 0 : 1;
 
     //pull program counter
+    S->SP += 2;
     S->PC = (S->memory[S->SP] << 8) + S->memory[S->SP - 1]; 
-    S->SP -= 2;
+
 
     S->cycleDif += 4;
 }
@@ -681,8 +687,8 @@ void RTI(CPUState* S){
 //Return from Subroutine
 void RTS(CPUState* S){
     //pull program counter
+    S->SP += 2;
     S->PC = (S->memory[S->SP] << 8) + S->memory[S->SP - 1];
-    S->SP -= 2;
 
     S->cycleDif += 4;
 
