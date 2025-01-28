@@ -11,8 +11,66 @@ void initialize(CPUState* S){
     S->SP = 0xFF;
 }
 
-uint16_t MemmoryMirror(uint16_t s){
-    return s % 0x2000;
+uint16_t MemmoryMirror(uint16_t s, uint8_t mod){
+    // keep first 13 bits (% 0x2000)
+    uint16_t result = s % 0x2000;
+    if(((result >> 12) & 1) == 0){ //A12 is 0
+        if(((result >> 7) & 1) == 0){ //A7 is 0
+            //TIA
+            if(mod == R){
+                //keep first 4 bits
+                result = result % 0x10;
+            } else if(mod == W){ //write
+                //keep first 6 bits
+                result = result % 0x40;
+            } else {
+                printf("not using the Write or Read mode of TIA\n");
+                exit(1);
+            }
+        } else {//A7 is 1
+            //RIOT
+            if(((result >> 9) & 1) == 0){ //A9 is 0
+                //RAM
+                // keep first 8 bits
+                result = result % 0x100;
+            } else { //A9 is 1
+                //xxx0 xx1x 1xxx xxxx
+                if(((result >> 2) & 1) == 0){ //A2 is 0
+                    //IO
+                    // 0000 0010 1000 00??
+                    result = 0b0000001010000000 + (result & 0b11);
+                } else {
+                    //xxx0 xx1x 1xxx x1xx
+                    if(mod == R){
+                        if((result & 1) == 0){ //A0 is 0
+                            //read timer
+                            // 0000 0010 1000 ?100
+                            result = 0b0000001010000100 + (result & 0b1000);
+                        } else {
+                            //read timer interrupt flag
+                            // 0000 0010 1000 0101
+                            result = 0b0000001010000101;
+                        } 
+                    } else if(mod == W) { //write
+                        if(((result >> 4) & 1) == 0){ //A4 is 0
+                            //write timer interrupt flag
+                            // 0000 0010 1000 01??
+                            result = 0b0000001010000100 + (result & 0b11);
+                        } else { //A4 is 1
+                            //write timer
+                            // 0000 0010 1001 ?1??
+                            result = 0b0000001010010100 + (result & 0b1011);
+                        } 
+                    } else {
+                        printf("not using the Write or Read mode of TIA\n");
+                        exit(1);
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
 }
 
 //To run an instruction based on its oppcode
@@ -55,14 +113,33 @@ void Run(CPUState* S){
         {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0}
     };
 
+
+    static const uint16_t modeM[16][16] = {
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, WR, 0, 0, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0},
+        {0, R, 0, 0, R, R, WR, 0, 0, R, WR, 0, R, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, WR, 0, 0, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, WR, 0, 0, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0},
+        {0, W, 0, 0, W, W, W, 0, 0, 0, 0, 0, W, W, W, 0},
+        {0, W, 0, 0, W, W, W, 0, 0, W, 0, 0, 0, W, 0, 0},
+        {R, R, R, 0, R, R, R, 0, 0, R, 0, 0, R, R, R, 0},
+        {0, R, 0, 0, R, R, R, 0, 0, R, 0, 0, R, R, R, 0},
+        {R, R, 0, 0, R, R, WR, 0, 0, R, 0, 0, R, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0},
+        {R, R, 0, 0, R, R, WR, 0, 0, R, 0, 0, R, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0}
+    };
+
     uint8_t oppcode = S->memory[S->PC]; 
     uint8_t aMode = addressingMode[oppcode >> 4][oppcode & 0b1111];
-
+    uint16_t mode = modeM[oppcode >> 4][oppcode & 0b1111];
 
     //based on addressing mode extract data and update cycles/ProgramCounter/target
     if(aMode == IMP){
         //Implied addressing
-
         S->cycleDif = 2;
         S->PC++;
     } else if(aMode == AA){
@@ -87,7 +164,9 @@ void Run(CPUState* S){
     } else if(aMode == IND){
         //Indirect addressing
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1];
+        location = MemmoryMirror(location, mode);
         uint16_t actualLocation = (S->memory[location + 1] << 8) + S->memory[location];
+        actualLocation = MemmoryMirror(actualLocation, mode);
         S->target = S->memory + actualLocation;
 
         S->cycleDif = 5;
@@ -96,8 +175,10 @@ void Run(CPUState* S){
     } else if(aMode == INDY){
         //Indirect Y
         uint8_t location = S->memory[S->PC + 1];
+        location = MemmoryMirror(location, mode);
         uint16_t oldLocation = (S->memory[location + 1] << 8) + S->memory[location];
         uint16_t actualLocation = oldLocation + S->Y;
+        actualLocation = MemmoryMirror(actualLocation, mode);
         S->target = S->memory + actualLocation;
 
         S->cycleDif = (oldLocation >> 8 == actualLocation >> 8) ? 5 : 6;
@@ -105,7 +186,9 @@ void Run(CPUState* S){
     } else if(aMode == INDX){
         //Indirect X
         uint8_t location = S->memory[S->PC + 1] + S->X;
+        location = MemmoryMirror(location, mode);
         uint16_t actualLocation = (S->memory[location + 1] << 8) + S->memory[location];
+        actualLocation = MemmoryMirror(actualLocation, mode);
         S->target = S->memory + actualLocation;
 
         S->cycleDif = 6;
@@ -114,6 +197,7 @@ void Run(CPUState* S){
     } else if(aMode == ZPG){
         //Zero page addressing
         uint8_t location = S->memory[S->PC + 1];
+        location = MemmoryMirror(location, mode);
         S->target = S->memory + location; 
 
         S->cycleDif = 3;
@@ -122,6 +206,7 @@ void Run(CPUState* S){
     } else if(aMode == ZPGX){
         //Zero page X addressing
         uint8_t location = S->memory[S->PC + 1] + S->X;
+        location = MemmoryMirror(location, mode);
         S->target = S->memory + location;
 
         S->cycleDif = 4;
@@ -130,6 +215,7 @@ void Run(CPUState* S){
     } else if(aMode == ZPGY){
         //Zero page Y addressing
         uint8_t location = S->memory[S->PC + 1] + S->Y;
+        location = MemmoryMirror(location, mode);
         S->target = S->memory + location;
 
         S->cycleDif = 4;
@@ -138,7 +224,7 @@ void Run(CPUState* S){
     } else if(aMode == ABS){
         //Absolute addressing
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1];
-        location = MemmoryMirror(location);
+        location = MemmoryMirror(location, mode);
         S->target = S->memory + location;
         S->cycleDif = 4;
         S->PC += 3;
@@ -146,6 +232,7 @@ void Run(CPUState* S){
     } else if(aMode == ABSX){
         //Absolute X addressing
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1] + S->X;
+        location = MemmoryMirror(location, mode);
         S->target = S->memory + location;
 
         S->cycleDif = 4;
@@ -154,6 +241,7 @@ void Run(CPUState* S){
     } else if(aMode == ABSY){
         //Absolute Y addressing
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1] + S->Y;
+        location = MemmoryMirror(location, mode);
         S->target = S->memory + location;
 
         S->cycleDif = 4;
@@ -303,6 +391,8 @@ void BPL(CPUState* S){
 
 //force break (force interrupt) program counter then status
 void BRK(CPUState* S){
+    S->A++;
+    S->A--;
     // S->B = 1;
 
     

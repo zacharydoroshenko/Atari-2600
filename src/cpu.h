@@ -36,6 +36,10 @@
 #define ABSY 12 //usually 4 (+1 if page crossed)     (STA = 5)                                                           //always 3 bytes
 #define IMP 13 //usually 2 (PHA = 3)(PHP = 3)(PLA = 4)(PLP = 4)(RTI = 6)(RTS = 6)(BRK = 7)                               //always 1 byte
 
+#define R 3
+#define W 1
+#define WR 2
+
 
 using namespace std;
 
