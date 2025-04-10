@@ -52,13 +52,13 @@ typedef struct CPUState{
     uint16_t PC;
 
     //processor status
-    bool C;
-    bool Z;
-    bool I;
-    bool D;
-    bool B;
-    bool V;
-    bool N;
+    uint8_t C;
+    uint8_t Z;
+    uint8_t I;
+    uint8_t D;
+    uint8_t B;
+    uint8_t V;
+    uint8_t N;
     //bool halt;
 
     //meta data about instruction
