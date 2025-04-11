@@ -29,7 +29,7 @@ int main(){
     //TODO make while loop good
     //While loop to create frame buffer
     int i = 0;
-    while(i < 550){
+    while(i < 50000){
         printf("%X, 0x%X\n", state->PC, state->memory[state->PC]);
         Run(state);
         // printf("%d\n", state->cycleDif);

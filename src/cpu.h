@@ -72,6 +72,9 @@ typedef struct CPUState{
 
 } CPUState;
 
+//gives the mirrored memmory address
+uint16_t MemmoryMirror(uint16_t s, uint8_t mod);
+
 //initializes cpustate variables to starting values
 void initialize(CPUState* S);
 

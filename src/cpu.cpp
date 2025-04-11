@@ -186,6 +186,7 @@ void Run(CPUState* S){
     } else if(aMode == INDX){
         //Indirect X
         uint8_t location = S->memory[S->PC + 1] + S->X;
+        // printf("0x%X\n", location);
         location = MemmoryMirror(location, mode);
         uint16_t actualLocation = (S->memory[location + 1] << 8) + S->memory[location];
         actualLocation = MemmoryMirror(actualLocation, mode);
@@ -198,7 +199,8 @@ void Run(CPUState* S){
         //Zero page addressing
         uint8_t location = S->memory[S->PC + 1];
         location = MemmoryMirror(location, mode);
-        S->target = S->memory + location; 
+        S->target = S->memory + location;
+        
 
         S->cycleDif = 3;
         S->PC += 2;
@@ -259,8 +261,8 @@ void Run(CPUState* S){
 //Add Memory to Accumulator with Carry
 void ADC(CPUState* S){
     uint8_t oldA = S->A;
-    S->A = S->A + *(S->target) + S->C;
     
+    S->A = S->A + *(S->target) + S->C;
     
     
     uint8_t oldASign = (oldA >> 7) & 1;
@@ -576,9 +578,10 @@ void JMP(CPUState* S){
 //Jump to new Location Saving Return Address
 void JSR(CPUState* S){
     //push PC to stack
-    S->memory[S->SP] = S->PC >> 8;
+    uint16_t toPush = S->PC - 1;
+    S->memory[S->SP] = toPush >> 8;
     S->SP--;
-    S->memory[S->SP] = S->PC & 0xFF;
+    S->memory[S->SP] = toPush & 0xFF;
     S->SP--;
     
     //jump to target address
@@ -778,7 +781,7 @@ void RTI(CPUState* S){
 void RTS(CPUState* S){
     //pull program counter
     S->SP += 2;
-    S->PC = (S->memory[S->SP] << 8) + S->memory[S->SP - 1];
+    S->PC = (S->memory[S->SP] << 8) + S->memory[S->SP - 1] + 1;
 
     S->cycleDif += 4;
 
@@ -796,10 +799,11 @@ void SBC(CPUState* S){
     uint8_t resultSign = (S->A >> 7) & 1;
     //check if overflow
     //if target and oldA have the same sign and result has opposite sign
-    S->V = (oldASign == targetSign && resultSign != oldASign) ? 1 : 0;
+    S->V = (oldASign != targetSign && resultSign != oldASign) ? 1 : 0;
 
     //check if carry
-    S->C = (S->A < oldA || S->A < *(S->target)) ? 0 : 1;
+    // S->C = (S->A < oldA || S->A < *(S->target)) ? 0 : 1;
+    S->C = (oldA >= *(S->target) + (-1 * S->C)) ? 1 : 0;
     
     S->Z = (S->A == 0) ? 1 : 0;
 

@@ -1,20 +1,21 @@
 # Atari-2600
 tasks:
 cpu:
-    determine if a cartridge is 2k and make 11th bit not matter in that case
-    figure out how to implement memory locations that are different when reading and writing (must edit memory mirroring function)
-    write all the tests for the cpu
+    6 determine if a cartridge is 2k and make 11th bit not matter in that case
+    3 igure out how to implement memory locations that are different when reading and writing (must edit memory mirroring function)
 
 tia:
-    start tia programming
+    4 start tia programming
 
 OpenGL:
-    start frame buffer work
+    7 start frame buffer work
 
 main:
-    include input support
-    create a way to print instructions being executed
-    create a way to print machine code as readable assembly
+    5 include input support
+    1 create a way to print instructions being executed
+    2 create a way to print machine code as readable assembly
+
+
 
 
 
