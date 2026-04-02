@@ -18,7 +18,7 @@
 
 //Don't worry about interrupts for now ie
 //BRK RTI
-
+#pragma once
 #include <iostream>
 #include <cstdint>
 
@@ -69,6 +69,9 @@ typedef struct CPUState{
 
     uint8_t memory[65536];
 
+    //other
+    bool fourKilo;
+
 
 } CPUState;
 
@@ -76,7 +79,7 @@ typedef struct CPUState{
 uint16_t MemmoryMirror(uint16_t s, uint8_t mod);
 
 //initializes cpustate variables to starting values
-void initialize(CPUState* S);
+void initialize(CPUState* S, int size);
 
 //To run an instruction based on its oppcode
 void Run(CPUState* S);
@@ -248,3 +251,60 @@ void TXS(CPUState* S);
 
 //Transfer Index Y to Accumulator
 void TYA(CPUState* S);
+
+static const FunctionPtr Instr[16][16] = {
+        {BRK, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr, PHP, ORA, ASL, nullptr, nullptr, ORA, ASL, nullptr},
+        {BPL, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr, CLC, ORA, nullptr, nullptr, nullptr, ORA, ASL, nullptr},
+        {JSR, AND, nullptr, nullptr, BIT, AND, ROL, nullptr, PLP, AND, ROL, nullptr, BIT, AND, ROL, nullptr},
+        {BMI, AND, nullptr, nullptr, nullptr, AND, ROL, nullptr, SEC, AND, nullptr, nullptr, nullptr, AND, ROL, nullptr},
+        {RTI, EOR, nullptr, nullptr, nullptr, EOR, LSR, nullptr, PHA, EOR, LSR, nullptr, JMP, EOR, LSR, nullptr},
+        {BVC, EOR, nullptr, nullptr, nullptr, EOR, LSR, nullptr, CLI, EOR, nullptr, nullptr, nullptr, EOR, LSR, nullptr},
+        {RTS, ADC, nullptr, nullptr, nullptr, ADC, ROR, nullptr, PLA, ADC, ROR, nullptr, JMP, ADC, ROR, nullptr},
+        {BVS, ADC, nullptr, nullptr, nullptr, ADC, ROR, nullptr, SEI, ADC, nullptr, nullptr, nullptr, ADC, ROR, nullptr},
+        {nullptr, STA, nullptr, nullptr, STY, STA, STX, nullptr, DEY, nullptr, TXA, nullptr, STY, STA, STX, nullptr},
+        {BCC, STA, nullptr, nullptr, STY, STA, STX, nullptr, TYA, STA, TXS, nullptr, nullptr, STA, nullptr, nullptr},
+        {LDY, LDA, LDX, nullptr, LDY, LDA, LDX, nullptr, TAY, LDA, TAX, nullptr, LDY, LDA, LDX, nullptr},
+        {BCS, LDA, nullptr, nullptr, LDY, LDA, LDX, nullptr, CLV, LDA, TSX, nullptr, LDY, LDA, LDX, nullptr},
+        {CPY, CMP, nullptr, nullptr, CPY, CMP, DEC, nullptr, INY, CMP, DEX, nullptr, CPY, CMP, DEC, nullptr},
+        {BNE, CMP, nullptr, nullptr, nullptr, CMP, DEC, nullptr, CLD, CMP, nullptr, nullptr, nullptr, CMP, DEC, nullptr},
+        {CPX, SBC, nullptr, nullptr, CPX, SBC, INC, nullptr, INX, SBC, NOP, nullptr, CPX, SBC, INC, nullptr},
+        {BEQ, SBC, nullptr, nullptr, nullptr, SBC, INC, nullptr, SED, SBC, nullptr, nullptr, nullptr, SBC, INC, nullptr}
+    };
+
+static const uint8_t addressingMode[16][16] = {
+        {IMP, INDX, 0, 0, 0, ZPG, ZPG, 0, IMP, IMM, AA, 0, 0, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {ABS, INDX, 0, 0, ZPG, ZPG, ZPG, 0, IMP, IMM, AA, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {IMP, INDX, 0, 0, 0, ZPG, ZPG, 0, IMP, IMM, AA, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {IMP, INDX, 0, 0, 0, ZPG, ZPG, 0, IMP, IMM, AA, 0, IND, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {0, INDX, 0, 0, ZPG, ZPG, ZPG, 0, IMP, 0, IMP, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, ZPGX, ZPGX, ZPGY, 0, IMP, ABSY, IMP, 0, 0, ABSX, 0, 0},
+        {IMM, INDX, IMM, 0, ZPG, ZPG, ZPG, 0, IMP, IMM, IMP, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, ZPGX, ZPGX, ZPGY, 0, IMP, ABSY, IMP, 0, ABSX, ABSX, ABSX, 0},
+        {IMM, INDX, 0, 0, ZPG, ZPG, ZPG, 0, IMP, IMM, IMP, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0},
+        {IMM, INDX, 0, 0, ZPG, ZPG, ZPG, 0, IMP, IMM, IMP, 0, ABS, ABS, ABS, 0},
+        {REL, INDY, 0, 0, 0, ZPGX, ZPGX, 0, IMP, ABSY, 0, 0, 0, ABSX, ABSX, 0}
+    };
+
+static const uint16_t modeM[16][16] = {
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, WR, 0, 0, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0},
+        {0, R, 0, 0, R, R, WR, 0, 0, R, WR, 0, R, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, WR, 0, 0, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, WR, 0, 0, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0},
+        {0, W, 0, 0, W, W, W, 0, 0, 0, 0, 0, W, W, W, 0},
+        {0, W, 0, 0, W, W, W, 0, 0, W, 0, 0, 0, W, 0, 0},
+        {R, R, R, 0, R, R, R, 0, 0, R, 0, 0, R, R, R, 0},
+        {0, R, 0, 0, R, R, R, 0, 0, R, 0, 0, R, R, R, 0},
+        {R, R, 0, 0, R, R, WR, 0, 0, R, 0, 0, R, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0},
+        {R, R, 0, 0, R, R, WR, 0, 0, R, 0, 0, R, R, WR, 0},
+        {0, R, 0, 0, 0, R, WR, 0, 0, R, 0, 0, 0, R, WR, 0}
+    };

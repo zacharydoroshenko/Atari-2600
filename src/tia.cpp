@@ -1,0 +1,77 @@
+#include "tia.h"
+#include <array>
+#include <cmath>
+#include <cstdint>
+// 1. draw background
+// 2. draw playfield
+#define COLUBK 0x09
+#define COLUPF 0x08
+
+static const int TIAtoRGB[16][8] = {
+    {0x000000, 0x1A1A1A, 0x393939, 0x5B5B5B, 0x7E7E7E, 0xA2A2A2, 0xC7C7C7, 0xEDEDED},
+    {0x160301, 0x362006, 0x594211, 0x7D651E, 0xA2892B, 0xC7AE39, 0xEDD34B, 0xFDFA66},
+    {0x320402, 0x561207, 0x792E10, 0x9D4F1C, 0xC27128, 0xE7943B, 0xF3B753, 0xF9E080},
+    {0x400704, 0x69110A, 0x8B2312, 0xAF3E25, 0xD35D40, 0xED7E60, 0xF0A187, 0xF5C8BD},
+    {0x3E060B, 0x651021, 0x891C40, 0xAC3362, 0xD05184, 0xEC71A8, 0xEF92D3, 0xF3BAF2},
+    {0x280347, 0x4F0A63, 0x721687, 0x942EAB, 0xB84DD0, 0xDD6DF7, 0xEF90F0, 0xF3B8F3},
+    {0x0B007D, 0x2E049B, 0x4E15C1, 0x6F32E7, 0x9252F5, 0xB876F6, 0xDF9CF8, 0xF5C2F6},
+    {0x00008B, 0x0905B5, 0x2722DB, 0x4742F4, 0x6A64F5, 0x8F8AF7, 0xB6B0F8, 0xDED8FB},
+    {0x00006D, 0x071BA4, 0x173BCE, 0x325DF4, 0x507FF6, 0x73A4F7, 0x98CCFA, 0xBFF4FC},
+    {0x031038, 0x11306A, 0x22549D, 0x3577C2, 0x4D9BE7, 0x6ABFF8, 0x8BE6FB, 0xAAFBFD},
+    {0x081E05, 0x194229, 0x2C6758, 0x3D8B7B, 0x53AE9E, 0x6ED4C3, 0x8DFBE9, 0xA4FBFD},
+    {0x0A2307, 0x1D4913, 0x2F6E21, 0x43933B, 0x5BB75A, 0x78DD7B, 0x95FB9D, 0xAFFBBB},
+    {0x092005, 0x1B4511, 0x2F691B, 0x498E27, 0x67B336, 0x88D84C, 0xAAFB68, 0xC9FC7E},
+    {0x041503, 0x1B3509, 0x3A5815, 0x5C7D23, 0x80A230, 0xA3C73D, 0xC8ED51, 0xECFD65},
+    {0x170301, 0x372006, 0x5A4211, 0x7E651E, 0xA3892B, 0xC9AE39, 0xEED34B, 0xFDFA66},
+    {0x330402, 0x571207, 0x7A2E11, 0x9E4F1C, 0xC37028, 0xE8943B, 0xF3B753, 0xF9E080}
+};
+
+
+void moveBeam(TIAState* T, CPUState* S){
+    //update position
+    T->hpos += 1;
+    if(T->hpos > 228){
+       T->hpos=0; 
+       T->vpos += 1;
+    }
+
+    //draw pixel
+    drawPixel(T, S);
+
+    //Run code
+    if(S->cycleDif <= 0) Run(S);
+    S->cycleDif--;
+
+    //Update Timer
+
+}
+
+void drawPixel(TIAState* T, CPUState* S){
+    //draw background
+    uint8_t color = S->memory[COLUBK];
+    //draw playfield
+    if(playFieldBit(T,S)) color = S->memory[COLUPF];
+
+}
+
+bool playFieldBit(TIAState* T, CPUState* S){
+    
+}
+
+
+
+void updateFrameBuffer(TIAState* T){
+    uint8_t frame[192][160];
+    uint8_t frameBuffer[192][160][3];
+
+    for(int i=0; i < 192; i++){
+        for(int j=0; j < 160; j++){
+            uint8_t tia = T->frame[i][j];
+            int color = TIAtoRGB[(tia & 0b11110000) >> 4][(tia & 0b1110) >> 1];
+            T->frameBuffer[i][j][0] = color & 0x0000FF;
+            T->frameBuffer[i][j][1] = color & 0xFF0000;
+            T->frameBuffer[i][j][2] = color & 0x00FF00;
+        }
+    }
+}
+

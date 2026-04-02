@@ -1,24 +1,33 @@
 #include "cpu.h"
+#include "debug.h"
 #include <fstream>
 typedef void (*FunctionPtr)(CPUState* S);
 
 int main(){
-    //initialize CPUState
-    CPUState* state = (CPUState*) calloc(sizeof(CPUState), 1);
-    initialize(state);
+    
 
-    //Open ROM and put into memory
+    //Open ROM 
     ifstream file("Combat.A26", ios::binary);
 
     if(!file){
         cerr << "Failed to open the file!" << std::endl;
         return 1;
     }
+    file.seekg(0, std::ios::end);
+    int size = file.tellg();
+    file.seekg(0, std::ios::beg); // Move back to start
 
+
+
+    //initialize CPUState
+    CPUState* S = (CPUState*) calloc(sizeof(CPUState), 1);
+    initialize(S, size);
+
+    //import ROM data into memory
     int memPos = 0x1000;
     char byte;
     while(file.read(&byte, 1)){
-        state->memory[memPos] = (uint8_t) byte;
+        S->memory[memPos] = (uint8_t) byte;
         memPos++;
     }
 
@@ -26,54 +35,17 @@ int main(){
 
     //initialize frame buffer
 
-    //TODO make while loop good
-    //While loop to create frame buffer
-    int i = 0;
-    while(i < 50000){
-        printf("%X, 0x%X\n", state->PC, state->memory[state->PC]);
-        Run(state);
-        // printf("%d\n", state->cycleDif);
-        
+    // printCode(S);
 
-        
-        i++;
+
+    printf("START\n");
+    //run until vsync is 1
+    while(((S->memory[0x00] & 2) == 0)){
+        uint8_t oppcode = S->memory[S->PC]; 
+        printf("0x%X: %s\n", S->PC, InstrStr[oppcode >> 4][oppcode & 0b1111]);
+        Run(S);
     }
-    //0x78 SEI
-    //0xD8 CLD
-    //0xA2 LDX
-    //0x9A TXS
-    //0xA2 LDX
-    //0x20 JSR
-    
 
-    //ClearMem
-    //0xA9 LDA
-    //0xE8 INX
-    //0x95 STA
-    //0xD0 BNE
-
-    //0xE8 INX
-    //0x95 STA
-    //0xD0 BNE
-
-    //0xE8 INX
-    //0x95 STA
-    //0xD0 BNE
-
-    //0x60 RTS
-
-    //0xA9 LDA
-    //0x8D STA 
-    //0x85 STA
-    //0x20 JSR
-
-    //ClrGam
-    //
-    
-
-
-
-    
 
 
 }

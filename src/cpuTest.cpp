@@ -373,7 +373,7 @@ int main(){
 
     //initialize CPUState
     CPUState* S = (CPUState*) calloc(sizeof(CPUState), 1);
-    initialize(S);
+    initialize(S, 2048);
 
     //ADC --------------------------------------------------------------------------------------------------------------------------------------
     assert(Tester(S, "A 0x01 M 0x09 C 0", "A 0x0A Z 0 C 0 N 0 V 0", "0x69 0x65 0x75 0x6D 0x7D 0x79 0x61 0x71"));
