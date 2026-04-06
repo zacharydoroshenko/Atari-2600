@@ -18,9 +18,13 @@
 
 //Don't worry about interrupts for now ie
 //BRK RTI
-#pragma once
-#include <iostream>
 #include <cstdint>
+#pragma once
+#include "tia.h"
+#include <iostream>
+#include "timer.h"
+struct TIAState; 
+struct TimerState;
 
 #define AA 1 //always 2 cycles                                                                                           //always 1 byte
 #define REL 2 //always 2 (+1 if branch succeeds +2 if to a new page)                                                     //always 2 bytes
@@ -47,6 +51,10 @@ using namespace std;
 typedef void (*FunctionPtr)(struct CPUState* S);
 
 typedef struct CPUState{
+    //references
+    TIAState* T;
+    TimerState* Ti;
+
     //registers
     uint8_t A, X, Y, SP;
     uint16_t PC;
@@ -59,10 +67,9 @@ typedef struct CPUState{
     uint8_t B;
     uint8_t V;
     uint8_t N;
-    //bool halt;
 
     //meta data about instruction
-    uint8_t cycleDif;
+    int cycleDif;
     uint8_t *target;
 
 
@@ -71,18 +78,45 @@ typedef struct CPUState{
 
     //other
     bool fourKilo;
+    bool halt;
 
+    //work arounds
+    uint8_t swchb;
+
+    //write queue
+    uint8_t writeQueueOpp;
+
+    //Strobe effects
+    bool resp0;
+    bool resp1;
+    bool resm0;
+    bool resm1;
+    bool resbl;
+    bool hmove;
+    bool hmclr;
+    bool cxclr;
+    bool grp0;
+    bool grp1;
+
+    //debug
+    bool frameCounter;
+    bool memoryGrid;
+    bool instructions;
+    bool frameStep;
 
 } CPUState;
 
+uint8_t applyHmove(uint8_t mem, uint8_t pos);
+
 //gives the mirrored memmory address
-uint16_t MemmoryMirror(uint16_t s, uint8_t mod);
+uint16_t MemoryMirror(uint16_t s, uint8_t mod, CPUState* S);
 
 //initializes cpustate variables to starting values
-void initialize(CPUState* S, int size);
+void initialize(CPUState* S, int size, TIAState* T, TimerState* Ti);
 
 //To run an instruction based on its oppcode
 void Run(CPUState* S);
+void HandleStrobe(CPUState* S);
 
 //Add Memory to Accumulator with Carry
 void ADC(CPUState* S);

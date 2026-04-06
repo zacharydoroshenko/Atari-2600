@@ -1,32 +1,141 @@
 #include "cpu.h"
+#include "addressDef.h"
 //do store functions for X, Y, A next
 //do jump next
 //do compare next
 
+uint8_t applyHmove(uint8_t mem, uint8_t pos){
+    int8_t adjust = (int8_t)mem >> 4;
+    int newPos = (int)pos - adjust;
+    if (newPos < 0) newPos += 160;
+    if (newPos >= 160) newPos -= 160;
+    return newPos;
+}
 
 //initializes cpustate variables to starting values
-void initialize(CPUState* S, int size){
-    //initialize variables 
+void initialize(CPUState* S, int size, TIAState* T, TimerState* Ti) {
+
+    S->T = T;
+    S->Ti = Ti;
+    T->swchb=0b11001011;
+
+    // 1. Zero out all memory first to ensure a clean state
+    for (int i = 0; i < 0xFFFF; i++) {
+        S->memory[i] = 0x00;
+    }
+
+    // 2. Set CPU Registers
+    // uint16_t lo = MemoryMirror(0xFFFC, R, S, Ti);
+    // uint16_t hi = MemoryMirror(0xFFFD, R, S, Ti);
+    // S->PC = (S->memory[hi] << 8) | S->memory[lo];
     S->PC = 0x1000;
     S->SP = 0xFF;
     S->fourKilo = size > 2048;
+
+    // 3. Hardware Defaults (Active Low / High bits)
+    S->memory[SWCHA] = 0xFF; // Joysticks idle
+    // S->memory[SWCHB] = 0xFF; // Console switches idle
+    S->memory[INPT4] = 0x80; // P0 Button up (bit 7 is 1)
+    S->memory[INPT5] = 0x80; // P1 Button up (bit 7 is 1)
+    // printf("SWCHB: 0x%X\n", S->memory[SWCHB]);
+
+    //debug
+    if(false){
+        S->frameCounter = true;
+        S->memoryGrid = true;
+        S->instructions = true;
+        S->frameStep = true;    
+    } else {
+        S->frameCounter = false;
+        S->memoryGrid = false;
+        S->instructions = false;
+        S->frameStep = false;
+    }
+
 }
 
-uint16_t MemmoryMirror(uint16_t s, uint8_t mod, CPUState* S){
+uint16_t MemoryMirror(uint16_t s, uint8_t mod, CPUState* S){
     // keep first 13 bits (% 0x2000)
     uint16_t result = s % 0x2000;
     if(((result >> 12) & 1) == 0){ //A12 is 0
+            
         if(((result >> 7) & 1) == 0){ //A7 is 0
             //TIA
             if(mod == R){
                 //keep first 4 bits
-                result = result % 0x10;
+                result = result & 0x3F;
             } else if(mod == W){ //write
                 //keep first 6 bits
                 result = result % 0x40;
+                //strobe and tia effects
+                switch (result){
+                case WSYNC:
+                    S->halt = true;
+                    S->cycleDif = 0;
+                    break;
+                case GRP0:
+                    S->T->updatePlayerBit0=true;
+                    if(S->memory[VDELP0] & 1) return GRP0BUFF;
+                    S->grp0 = true;
+                    break;
+                case GRP1:
+                    S->T->updatePlayerBit1=true;
+                    if(S->memory[VDELP1] & 1) return GRP1BUFF;
+                    S->grp1 = true;
+                    break;
+                case NUSIZ0:
+                    S->T->updatePlayerBit0=true;
+                    break;
+                case NUSIZ1:
+                    S->T->updatePlayerBit1=true;
+                    break;
+                case RESP0:
+                    S->T->updatePlayerBit0=true;
+                    S->resp0=true;
+                    break;
+                case RESP1:
+                    S->T->updatePlayerBit1=true;
+                    S->resp1=true;
+                    break;
+                case RESM0:
+                    S->resm0=true;
+                    break;
+                case RESM1:
+                    S->resm1=true;
+                    break;
+                case RESBL:
+                    S->resbl=true;
+                    break;
+                case HMP0:
+                    S->T->updatePlayerBit0=true;
+                    break;
+                case HMP1:
+                    S->T->updatePlayerBit1=true;
+                    break;
+                case REFP0:
+                    S->T->updatePlayerBit0=true;
+                    break;
+                case REFP1:
+                    S->T->updatePlayerBit1=true;
+                    break;
+                case CXCLR:
+                    S->cxclr=true;
+                    break;
+                case HMOVE:
+                    S->T->updatePlayerBit0=true;
+                    S->T->updatePlayerBit1=true;
+                    S->hmove=true;
+                    break;
+                case HMCLR:
+                    S->hmclr=true;
+                    break;
+                default:
+                    break;
+                }
+
             } else {
-                printf("not using the Write or Read mode of TIA\n");
-                exit(1);
+                // printf("not using the Write or Read mode of TIA\n");
+                // exit(1);
             }
         } else {//A7 is 1
             //RIOT
@@ -40,6 +149,12 @@ uint16_t MemmoryMirror(uint16_t s, uint8_t mod, CPUState* S){
                     //IO
                     // 0000 0010 1000 00??
                     result = 0b0000001010000000 + (result & 0b11);
+                    if(result == SWCHB && mod == R){
+                        // printf("WE MAKE THE CORRECT SWCHB if it wants to be read\n");
+                        // WE MAKE THE CORRECT SWCHB if it wants to be read
+                        S->memory[SWCHBREAD] = (S->memory[SWCHB] & 0b00110100) | (S->T->swchb & 0b11001011);
+                        return  SWCHBREAD;
+                    }
                 } else {
                     //xxx0 xx1x 1xxx x1xx
                     if(mod == R){
@@ -47,10 +162,13 @@ uint16_t MemmoryMirror(uint16_t s, uint8_t mod, CPUState* S){
                             //read timer
                             // 0000 0010 1000 ?100
                             result = 0b0000001010000100 + (result & 0b1000);
+                            if(result == INTIM) S->Ti->hyperMode = false;
                         } else {
                             //read timer interrupt flag
                             // 0000 0010 1000 0101
                             result = 0b0000001010000101;
+                            //OK SO BASICALLY I gotta rest bit 6 in INSTAT but only after it is retrieved
+                            S->Ti->instatBit6reset=true;
                         } 
                     } else if(mod == W) { //write
                         if(((result >> 4) & 1) == 0){ //A4 is 0
@@ -60,7 +178,10 @@ uint16_t MemmoryMirror(uint16_t s, uint8_t mod, CPUState* S){
                         } else { //A4 is 1
                             //write timer
                             // 0000 0010 1001 ?1??
-                            result = 0b0000001010010100 + (result & 0b1011);
+                            // result = 0b0000001010010100 + (result & 0b1011);
+                            uint16_t timerAddr = 0b0000001010010100 + (result & 0b1011);
+                            setTimer(S, timerAddr);
+                            result = INTIM;  // ← route write to INTIM so initial value (43) lands there
                         } 
                     } else {
                         printf("not using the Write or Read mode of TIA\n");
@@ -77,6 +198,7 @@ uint16_t MemmoryMirror(uint16_t s, uint8_t mod, CPUState* S){
             result = result % 0x800;
             result += 0x1000;
         }
+        return result;
     }
 
     return result;
@@ -116,9 +238,9 @@ void Run(CPUState* S){
     } else if(aMode == IND){
         //Indirect addressing
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1];
-        location = MemmoryMirror(location, mode, S);
+        location = MemoryMirror(location, mode, S);
         uint16_t actualLocation = (S->memory[location + 1] << 8) + S->memory[location];
-        actualLocation = MemmoryMirror(actualLocation, mode, S);
+        actualLocation = MemoryMirror(actualLocation, mode, S);
         S->target = S->memory + actualLocation;
 
         S->cycleDif = 5;
@@ -127,10 +249,10 @@ void Run(CPUState* S){
     } else if(aMode == INDY){
         //Indirect Y
         uint8_t location = S->memory[S->PC + 1];
-        location = MemmoryMirror(location, mode, S);
+        location = MemoryMirror(location, mode, S);
         uint16_t oldLocation = (S->memory[location + 1] << 8) + S->memory[location];
         uint16_t actualLocation = oldLocation + S->Y;
-        actualLocation = MemmoryMirror(actualLocation, mode, S);
+        actualLocation = MemoryMirror(actualLocation, mode, S);
         S->target = S->memory + actualLocation;
 
         S->cycleDif = (oldLocation >> 8 == actualLocation >> 8) ? 5 : 6;
@@ -139,9 +261,9 @@ void Run(CPUState* S){
         //Indirect X
         uint8_t location = S->memory[S->PC + 1] + S->X;
         // printf("0x%X\n", location);
-        location = MemmoryMirror(location, mode, S);
+        location = MemoryMirror(location, mode, S);
         uint16_t actualLocation = (S->memory[location + 1] << 8) + S->memory[location];
-        actualLocation = MemmoryMirror(actualLocation, mode, S);
+        actualLocation = MemoryMirror(actualLocation, mode, S);
         S->target = S->memory + actualLocation;
 
         S->cycleDif = 6;
@@ -150,7 +272,7 @@ void Run(CPUState* S){
     } else if(aMode == ZPG){
         //Zero page addressing
         uint8_t location = S->memory[S->PC + 1];
-        location = MemmoryMirror(location, mode, S);
+        location = MemoryMirror(location, mode, S);
         S->target = S->memory + location;
         
 
@@ -160,7 +282,7 @@ void Run(CPUState* S){
     } else if(aMode == ZPGX){
         //Zero page X addressing
         uint8_t location = S->memory[S->PC + 1] + S->X;
-        location = MemmoryMirror(location, mode, S);
+        location = MemoryMirror(location, mode, S);
         S->target = S->memory + location;
 
         S->cycleDif = 4;
@@ -169,7 +291,7 @@ void Run(CPUState* S){
     } else if(aMode == ZPGY){
         //Zero page Y addressing
         uint8_t location = S->memory[S->PC + 1] + S->Y;
-        location = MemmoryMirror(location, mode, S);
+        location = MemoryMirror(location, mode, S);
         S->target = S->memory + location;
 
         S->cycleDif = 4;
@@ -178,7 +300,7 @@ void Run(CPUState* S){
     } else if(aMode == ABS){
         //Absolute addressing
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1];
-        location = MemmoryMirror(location, mode, S);
+        location = MemoryMirror(location, mode, S);
         S->target = S->memory + location;
         S->cycleDif = 4;
         S->PC += 3;
@@ -186,7 +308,7 @@ void Run(CPUState* S){
     } else if(aMode == ABSX){
         //Absolute X addressing
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1] + S->X;
-        location = MemmoryMirror(location, mode, S);
+        location = MemoryMirror(location, mode, S);
         S->target = S->memory + location;
 
         S->cycleDif = 4;
@@ -195,7 +317,7 @@ void Run(CPUState* S){
     } else if(aMode == ABSY){
         //Absolute Y addressing
         uint16_t location = (S->memory[S->PC + 2] << 8) + S->memory[S->PC + 1] + S->Y;
-        location = MemmoryMirror(location, mode, S);
+        location = MemoryMirror(location, mode, S);
         S->target = S->memory + location;
 
         S->cycleDif = 4;
@@ -207,30 +329,135 @@ void Run(CPUState* S){
     }
 
     //run the instruction
-    Instr[oppcode >> 4][oppcode & 0b1111](S);
+    if(mode == W){
+        S->writeQueueOpp = oppcode;
+    } else {
+        Instr[oppcode >> 4][oppcode & 0b1111](S);
+    }
+
+    //check for bit 6 INSTAT reset (since its not R dont have to worry about instruction running after this)
+    if(S->Ti->instatBit6reset){
+        S->memory[INSTAT] &= 0b10111111;
+        S->Ti->instatBit6reset = false;
+    } 
+
+}
+
+void HandleStrobe(CPUState* S){
+    TIAState* T= S->T;
+    if(S->resp0){
+        T->player0H = T->hpos - 68 + 5;
+
+        //if bits 0-2 of NUSIZ0 is 5 or 7 then add 1 
+        uint8_t nusiz = S->memory[NUSIZ0] & 0b00000111;
+        if(nusiz == 5 || nusiz == 7) T->player0H++;
+        S->resp0=false;
+    }
+    if(S->resp1){
+        T->player1H = T->hpos - 68 + 5;
+        // printf("Resp1 activated\n");
+
+        //if bits 0-2 of NUSIZ0 is 5 or 7 then add 1 
+        uint8_t nusiz = S->memory[NUSIZ1] & 0b00000111;
+        if(nusiz == 5 || nusiz == 7) T->player1H++;
+        S->resp1=false;
+    }
+    if(S->resm0){
+        T->missile0H = T->hpos - 68 + 2;
+        if((S->memory[RESMP0] >> 1) & 1) S->T->missile0H = S->T->player0H + 3;
+        S->resm0=false;
+    }
+    if(S->resm1){
+        T->missile1H = T->hpos - 68 + 2;
+        if((S->memory[RESMP1] >> 1) & 1) S->T->missile1H = S->T->player1H + 3;
+        S->resm1=false;
+    }
+    if(S->resbl){
+        T->ballH = T->hpos - 68 + 2;
+        S->resbl=false;
+    }
+    if(S->grp0){
+        if(S->memory[VDELP1] & 1) S->memory[GRP1] = S->memory[GRP1BUFF];
+        S->grp0=false;
+    }
+    if(S->grp1){
+        if(S->memory[VDELP0] & 1) S->memory[GRP0] = S->memory[GRP0BUFF];
+        S->grp1=false;
+    }
+    if(S->cxclr){
+        // printf("CXCLR fired at hpos:%d vpos:%d\n", S->T->hpos, S->T->vpos);
+        for(int i = 0x30; i <= 0x37; i++) {
+            if(S->memory[i]); //printf("  clearing 0x%X = 0x%X\n", i, S->memory[i]);
+            S->memory[i] = 0;
+        }
+        S->cxclr = false;
+    }
+    if(S->hmove){
+        int8_t adj0  = (int8_t)(S->memory[HMP0]) >> 4;
+        int8_t adj1  = (int8_t)(S->memory[HMP1]) >> 4;
+        int8_t adjm0 = (int8_t)(S->memory[HMM0]) >> 4;
+        int8_t adjm1 = (int8_t)(S->memory[HMM1]) >> 4;
+        int8_t adjb  = (int8_t)(S->memory[HMBL]) >> 4;
+        S->T->player0H  = ((S->T->player0H  - adj0 ) % 160 + 160) % 160;
+        S->T->player1H  = ((S->T->player1H  - adj1 ) % 160 + 160) % 160;
+        S->T->missile0H = ((S->T->missile0H - adjm0) % 160 + 160) % 160;
+        S->T->missile1H = ((S->T->missile1H - adjm1) % 160 + 160) % 160;
+        S->T->ballH     = ((S->T->ballH     - adjb ) % 160 + 160) % 160;
+
+        //check if missles locked on player
+        if((S->memory[RESMP0] >> 1) & 1) S->T->missile0H = S->T->player0H + 3;
+        if((S->memory[RESMP1] >> 1) & 1) S->T->missile1H = S->T->player1H + 3;
+
+
+        S->hmove=false;
+    }
+    if(S->hmclr){
+        S->memory[HMP0] = 0;
+        S->memory[HMP1] = 0;
+        S->memory[HMM0] = 0;
+        S->memory[HMM1] = 0;
+        S->memory[HMBL] = 0;
+
+        S->hmclr=false;
+    }
+    // if(S->cxclr){
+    //     S->memory[CXM0P]  = 0;
+    //     S->memory[CXM1P]  = 0;
+    //     S->memory[CXP0FB] = 0;
+    //     S->memory[CXP1FB] = 0;
+    //     S->memory[CXM0FB] = 0;
+    //     S->memory[CXM1FB] = 0;
+    //     S->memory[CXBLPF] = 0;
+    //     S->memory[CXPPMM] = 0;
+    //     S->cxclr=false;
+    // }
+
+    if(T->updatePlayerBit0){
+        updatePlayerLine(S, 0);
+        T->updatePlayerBit0=false;
+    }
+    if(T->updatePlayerBit1){
+        updatePlayerLine(S, 1);
+        T->updatePlayerBit1=false;
+    }
 }
 
 //Add Memory to Accumulator with Carry
 void ADC(CPUState* S){
+    uint16_t result = (uint16_t)S->A + (uint16_t)*(S->target) + (uint16_t)S->C;
+    
+    if(S->D){
+        // BCD correction
+        if((result & 0x0F) > 9) result += 0x06;  // fix low nibble
+        if((result & 0xF0) > 0x90) result += 0x60; // fix high nibble
+    }
+    
     uint8_t oldA = S->A;
-    
-    S->A = S->A + *(S->target) + S->C;
-    
-    
-    uint8_t oldASign = (oldA >> 7) & 1;
-    uint8_t targetSign = (*(S->target) >> 7) & 1;
-    uint8_t resultSign = (S->A >> 7) & 1;
-    //check if overflow
-    //if target and oldA have the same sign and result has opposite sign
-    S->V = (oldASign == targetSign && resultSign != oldASign) ? 1 : 0;
-
-    //check if carry
-    S->C = (S->A < oldA || S->A < *(S->target)) ? 1 : 0;
-    
+    S->A = (uint8_t)result;
+    S->C = (result > 0xFF) ? 1 : 0;
+    S->V = ((oldA ^ S->A) & (*(S->target) ^ S->A) & 0x80) ? 1 : 0;
     S->Z = (S->A == 0) ? 1 : 0;
-
-    //extracted bit
-    S->N = ((S->A >> 7) & 1) ? 1 : 0;
+    S->N = (S->A >> 7) & 1;
 }
 
 //And Memory with Accumulator
@@ -246,7 +473,7 @@ void AND(CPUState* S){
 
 //Shift left one bit (memory or accumulator)
 void ASL(CPUState* S){
-    S->cycleDif += 2;
+    if(S->target != &S->A) S->cycleDif += 2;
 
     //update carry
     S->C = (*(S->target) >> 7) & 1;
@@ -263,12 +490,10 @@ void ASL(CPUState* S){
 //Branch on Carry clear
 void BCC(CPUState* S){
     if(S->C == 0){
-        //branch taken
         int8_t offset = *(S->target);
+        uint16_t prevPC = S->PC;   // PC is already at PC+2 here
         S->PC += offset;
-
-        //put correct cycleDif based on if it crossed a page
-        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((prevPC >> 8) == (S->PC >> 8)) ? 3 : 4;
     }
 
 }
@@ -278,24 +503,20 @@ void BCS(CPUState* S){
     //extract the argument
 
     if(S->C == 1){
-        //branch taken
         int8_t offset = *(S->target);
+        uint16_t prevPC = S->PC;   // PC is already at PC+2 here
         S->PC += offset;
-
-        //put correct cycleDif based on if it crossed a page
-        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((prevPC >> 8) == (S->PC >> 8)) ? 3 : 4;
     }
 }
 
 //Branch on result zero
 void BEQ(CPUState* S){
     if(S->Z == 1){
-        //branch taken
         int8_t offset = *(S->target);
+        uint16_t prevPC = S->PC;   // PC is already at PC+2 here
         S->PC += offset;
-
-        //put correct cycleDif based on if it crossed a page
-        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((prevPC >> 8) == (S->PC >> 8)) ? 3 : 4;
     }
 }
 
@@ -310,36 +531,30 @@ void BIT(CPUState* S){
 //Branch on result minus
 void BMI(CPUState* S){
     if(S->N == 1){
-        //branch taken
         int8_t offset = *(S->target);
+        uint16_t prevPC = S->PC;   // PC is already at PC+2 here
         S->PC += offset;
-
-        //put correct cycleDif based on if it crossed a page
-        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((prevPC >> 8) == (S->PC >> 8)) ? 3 : 4;
     }
 }
 
 //branch on result not zero
 void BNE(CPUState* S){
     if(S->Z == 0){
-        //branch taken
         int8_t offset = *(S->target);
+        uint16_t prevPC = S->PC;   // PC is already at PC+2 here
         S->PC += offset;
-
-        //put correct cycleDif based on if it crossed a page
-        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((prevPC >> 8) == (S->PC >> 8)) ? 3 : 4;
     }
 }
 
 //branch on result plus
 void BPL(CPUState* S){
     if(S->N == 0){
-        //branch taken
         int8_t offset = *(S->target);
+        uint16_t prevPC = S->PC;   // PC is already at PC+2 here
         S->PC += offset;
-
-        //put correct cycleDif based on if it crossed a page
-        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((prevPC >> 8) == (S->PC >> 8)) ? 3 : 4;
     }
 }
 
@@ -385,10 +600,9 @@ void BVC(CPUState* S){
     if(S->V == 0){
         //branch taken
         int8_t offset = *(S->target);
+        uint16_t prevPC = S->PC;   // PC is already at PC+2 here
         S->PC += offset;
-
-        //put correct cycleDif based on if it crossed a page
-        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((prevPC >> 8) == (S->PC >> 8)) ? 3 : 4;
     }
 }
 
@@ -397,10 +611,9 @@ void BVS(CPUState* S){
     if(S->V == 1){
         //branch taken
         int8_t offset = *(S->target);
+        uint16_t prevPC = S->PC;   // PC is already at PC+2 here
         S->PC += offset;
-
-        //put correct cycleDif based on if it crossed a page
-        S->cycleDif = ((S->PC - *(S->target)) >> 8 == S->PC >> 8) ? 3 : 4;
+        S->cycleDif = ((prevPC >> 8) == (S->PC >> 8)) ? 3 : 4;
     }
 }
 
@@ -575,9 +788,9 @@ void LDY(CPUState* S){
     S->N = ((S->Y >> 7) & 1) ? 1 : 0;
 }
 
-//Shift One Bit Right (Memory or Accumulator)
+//Shift One Bit Right (Memory or Accumulator)F
 void LSR(CPUState* S){
-    S->cycleDif += 2;
+    if(S->target != &S->A) S->cycleDif += 2;
 
     //update carry
     S->C = *(S->target) & 1;
@@ -666,7 +879,7 @@ void PLP(CPUState* S){
 
 //Rotate One Bit Left (Memory or Accumulator)
 void ROL(CPUState* S){
-    S->cycleDif += 2;
+    if(S->target != &S->A) S->cycleDif += 2;
 
     //save 7th bit
     uint8_t temp = (*(S->target) >> 7) & 1;
@@ -687,7 +900,7 @@ void ROL(CPUState* S){
 
 //Rotate One Bit Right (Memory or Accumulator)
 void ROR(CPUState* S){
-    S->cycleDif += 2;
+    if(S->target != &S->A) S->cycleDif += 2;
 
     //save 0th bit
     uint8_t temp = *(S->target) & 1;
@@ -741,26 +954,20 @@ void RTS(CPUState* S){
 
 //Subtract Memory from Accumulator
 void SBC(CPUState* S){
+    uint8_t borrow = 1 - S->C;
+    uint16_t result = (uint16_t)S->A - (uint16_t)*(S->target) - borrow;
+    
+    if(S->D){
+        if((result & 0x0F) > 9) result -= 0x06;
+        if((result & 0xF0) > 0x90) result -= 0x60;
+    }
+    
     uint8_t oldA = S->A;
-    S->A = S->A - *(S->target) - (1 - S->C);
-    
-    
-    
-    uint8_t oldASign = (oldA >> 7) & 1;
-    uint8_t targetSign = (*(S->target) >> 7) & 1;
-    uint8_t resultSign = (S->A >> 7) & 1;
-    //check if overflow
-    //if target and oldA have the same sign and result has opposite sign
-    S->V = (oldASign != targetSign && resultSign != oldASign) ? 1 : 0;
-
-    //check if carry
-    // S->C = (S->A < oldA || S->A < *(S->target)) ? 0 : 1;
-    S->C = (oldA >= *(S->target) + (-1 * S->C)) ? 1 : 0;
-    
+    S->A = (uint8_t)result;
+    S->C = (result <= 0xFF) ? 1 : 0;
+    S->V = ((oldA ^ *(S->target)) & (oldA ^ S->A) & 0x80) ? 1 : 0;
     S->Z = (S->A == 0) ? 1 : 0;
-
-    //extracted bit
-    S->N = ((S->A >> 7) & 1) ? 1 : 0;
+    S->N = (S->A >> 7) & 1;
 }
 
 //Set Carry Flag
